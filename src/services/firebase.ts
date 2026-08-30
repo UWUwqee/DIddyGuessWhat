@@ -139,6 +139,8 @@ export function formatFirebaseAuthError(error: unknown): string {
   if (!error) return 'An unknown error occurred.';
   const code = (error as { code?: string })?.code || '';
   switch (code) {
+    case 'auth/unauthorized-domain':
+      return 'Unauthorized Domain: This domain is not in your Firebase Authorized Domains list. Please add your Railway/deployed domain in Firebase Console > Authentication > Settings > Authorized domains, or use Email / Guest sign-in.';
     case 'auth/email-already-in-use':
       return 'This email is already registered. Please sign in or use another email.';
     case 'auth/invalid-email':
