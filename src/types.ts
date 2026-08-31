@@ -195,6 +195,7 @@ export interface DailyMission {
   progress: number;
   completed: boolean;
   claimed: boolean;
+  difficulty?: 'easy' | 'medium' | 'hard';
   reward: {
     diamonds?: string;
     amethysts?: string;
