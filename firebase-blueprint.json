@@ -1,0 +1,106 @@
+{
+  "entities": {
+    "users": {
+      "title": "User Profile",
+      "description": "User account profile, stats, level, xp, and unlocked achievements",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "username": { "type": "string" },
+        "email": { "type": "string" },
+        "avatar": { "type": "string" },
+        "color": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "level": { "type": "number" },
+        "xp": { "type": "number" },
+        "stats": {
+          "type": "object",
+          "properties": {
+            "gamesPlayed": { "type": "number" },
+            "wins": { "type": "number" },
+            "totalScore": { "type": "number" },
+            "wordsGuessed": { "type": "number" },
+            "drawingsCompleted": { "type": "number" },
+            "highestRoundScore": { "type": "number" },
+            "fastestGuessSec": { "type": "number" },
+            "bombsDefused": { "type": "number" },
+            "pixelsGuessed": { "type": "number" },
+            "blindfoldScores": { "type": "number" },
+            "unoWins": { "type": "number" },
+            "unoCardsPlayed": { "type": "number" }
+          }
+        },
+        "unlockedBadges": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "required": ["id", "username"]
+    },
+    "leaderboard": {
+      "title": "Global Arcade Leaderboard",
+      "description": "Player high scores across multiplayer draw, UNO, and mini-games",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "username": { "type": "string" },
+        "avatar": { "type": "string" },
+        "score": { "type": "number" },
+        "wins": { "type": "number" },
+        "level": { "type": "number" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["userId", "username", "score"]
+    },
+    "rooms": {
+      "title": "Multiplayer Game Rooms",
+      "description": "Active multiplayer game rooms and lobbies for real-time play",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "mode": { "type": "string" },
+        "hostId": { "type": "string" },
+        "status": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "name", "hostId"]
+    },
+    "activities": {
+      "title": "Player Activities & Events",
+      "description": "Live global player activity events including match wins, level ups, bets, and badges",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "username": { "type": "string" },
+        "avatar": { "type": "string" },
+        "type": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "gameMode": { "type": "string" },
+        "pointsEarned": { "type": "number" },
+        "timestamp": { "type": "string" }
+      },
+      "required": ["id", "userId", "username", "type", "title", "timestamp"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "entity": "users",
+      "description": "User profile documents stored by user ID"
+    },
+    "/leaderboard/{entryId}": {
+      "entity": "leaderboard",
+      "description": "Global leaderboard rankings"
+    },
+    "/rooms/{roomId}": {
+      "entity": "rooms",
+      "description": "Multiplayer rooms"
+    },
+    "/activities/{activityId}": {
+      "entity": "activities",
+      "description": "Live player activity events feed"
+    }
+  }
+}

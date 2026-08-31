@@ -1,0 +1,39 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper function to check if request is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Helper function to check user ownership
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Users Collection - public read for leaderboards/lobbies, anyone can create/update profile
+    match /users/{userId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Leaderboard Collection - public read & write so all players' avatars & scores sync globally
+    match /leaderboard/{entryId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Multiplayer Rooms - public read & write for active games & lobbies
+    match /rooms/{roomId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Player Activities Feed - public read & write for global real-time event logs
+    match /activities/{activityId} {
+      allow read: if true;
+      allow write: if true;
+    }
+  }
+}
+
