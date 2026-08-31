@@ -12,9 +12,6 @@ import {
   Sparkles,
   Clock,
   ArrowLeft,
-  Bot,
-  UserPlus,
-  UserMinus,
   AlertCircle,
   X,
 } from 'lucide-react';
@@ -25,7 +22,7 @@ import { NgipName, NgipBadge } from './NgipBadge';
 import { soundManager } from '../utils/soundEffects';
 
 export const Scoreboard: React.FC = () => {
-  const { gameState, isHost, startGame, addBot, removeBot, leaveRoom, errorMessage, clearError } = useGame();
+  const { gameState, isHost, startGame, leaveRoom, errorMessage, clearError } = useGame();
   const { user } = useAuth();
   const [copiedCode, setCopiedCode] = React.useState(false);
 
@@ -33,8 +30,7 @@ export const Scoreboard: React.FC = () => {
 
   // Sort players by score descending
   const sortedPlayers = [...gameState.players].sort((a, b) => b.score - a.score);
-  const botCount = gameState.players.filter(p => typeof p.id === 'string' && p.id.startsWith('bot_')).length;
-  const activeConnectedCount = gameState.players.filter(p => p.isConnected).length;
+  const activeConnectedCount = gameState.players.filter(p => p.isConnected && !p.id.startsWith('bot_')).length;
 
   const handleCopyCode = () => {
     if (!gameState.roomId) return;
@@ -48,16 +44,6 @@ export const Scoreboard: React.FC = () => {
   const handleStartGameClick = () => {
     soundManager.playButton();
     startGame();
-  };
-
-  const handleAddBotClick = () => {
-    soundManager.playTick();
-    addBot();
-  };
-
-  const handleRemoveBotClick = () => {
-    soundManager.playTick();
-    removeBot();
   };
 
   return (
@@ -233,9 +219,9 @@ export const Scoreboard: React.FC = () => {
               <button
                 type="button"
                 onClick={handleStartGameClick}
-                disabled={activeConnectedCount < 1}
+                disabled={activeConnectedCount < 2}
                 className={`w-full py-2.5 px-4 rounded-xl text-xs font-bold text-white flex items-center justify-center gap-2 transition-all ${
-                  activeConnectedCount >= 1
+                  activeConnectedCount >= 2
                     ? 'bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 shadow-md shadow-indigo-600/25 active:scale-95 cursor-pointer'
                     : 'bg-slate-300 dark:bg-slate-700 text-slate-500 dark:text-slate-400 cursor-not-allowed'
                 }`}
@@ -244,38 +230,13 @@ export const Scoreboard: React.FC = () => {
                 <span>
                   {activeConnectedCount >= 2
                     ? `Start ${gameState.settings?.gameMode ? gameState.settings.gameMode.replace(/_/g, ' ').toUpperCase() : 'GAME'}`
-                    : `Start Game (${activeConnectedCount} Player)`}
+                    : `Waiting for 2 real players (${activeConnectedCount}/2)`}
                 </span>
               </button>
 
-              {/* Bot controls for Host */}
-              <div className="flex items-center gap-1.5 pt-0.5">
-                <button
-                  type="button"
-                  onClick={handleAddBotClick}
-                  disabled={gameState.players.length >= (gameState.settings?.maxPlayers || 8)}
-                  className="flex-1 py-1.5 px-2 rounded-xl bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 text-[11px] font-bold hover:bg-indigo-100 dark:hover:bg-indigo-900 flex items-center justify-center gap-1 transition-all disabled:opacity-50 cursor-pointer"
-                >
-                  <Bot className="w-3 h-3" />
-                  <span>+ Add AI Bot (Optional)</span>
-                </button>
-
-                {botCount > 0 && (
-                  <button
-                    type="button"
-                    onClick={handleRemoveBotClick}
-                    className="py-1.5 px-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 text-[11px] font-bold hover:bg-rose-50 dark:hover:bg-rose-950/40 hover:text-rose-600 hover:border-rose-200 flex items-center justify-center gap-1 transition-all cursor-pointer"
-                    title="Remove last bot"
-                  >
-                    <UserMinus className="w-3 h-3" />
-                    <span>- Bot</span>
-                  </button>
-                )}
-              </div>
-
               {activeConnectedCount < 2 && (
                 <p className="text-[10px] text-center text-slate-500 dark:text-slate-400">
-                  Share code <span className="font-mono font-bold text-indigo-600 dark:text-indigo-400">{gameState.roomCode || (gameState.roomId.includes('_') ? gameState.roomId.split('_')[1].toUpperCase() : gameState.roomId)}</span> with friends or click <span className="font-semibold text-indigo-600 dark:text-indigo-400">+ Add AI Bot</span> to play with AI.
+                  Share code <span className="font-mono font-bold text-indigo-600 dark:text-indigo-400">{gameState.roomCode || (gameState.roomId.includes('_') ? gameState.roomId.split('_')[1].toUpperCase() : gameState.roomId)}</span> with real friends. Multiplayer rooms do not use AI bots.
                 </p>
               )}
             </div>

@@ -266,6 +266,12 @@ const MainGameContainer: React.FC<{
                         <Users className="w-3.5 h-3.5" />
                         <span>{gameState.players.filter(p => p.isConnected).length} Players</span>
                       </div>
+                      <div className="hidden md:block max-w-[min(42vw,22rem)] truncate text-[10px] font-semibold text-slate-500 dark:text-slate-400">
+                        {gameState.players
+                          .filter(p => p.isConnected)
+                          .map(p => p.username)
+                          .join(' • ')}
+                      </div>
                     </div>
                   </div>
 

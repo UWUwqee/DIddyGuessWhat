@@ -205,7 +205,6 @@ export const Lobby: React.FC<LobbyProps> = ({
   const [wordCategory, setWordCategory] = useState<WordCategory>('all');
   const [isPrivate, setIsPrivate] = useState(false);
   const [allowHints, setAllowHints] = useState(true);
-  const [enableBots, setEnableBots] = useState(false);
 
   // Betting state for Create Room (Room Owner Choice)
   const [enableBetting, setEnableBetting] = useState<boolean>(false);
@@ -326,7 +325,7 @@ export const Lobby: React.FC<LobbyProps> = ({
       customWords: [],
       isPrivate,
       allowHints,
-      botPlayersEnabled: enableBots,
+      botPlayersEnabled: false,
       gameMode: selectedGameMode,
       betting: bettingConfig,
     };
@@ -773,8 +772,8 @@ export const Lobby: React.FC<LobbyProps> = ({
                 )}
               </div>
 
-              {/* 4. Round Duration & Counts */}
-              <div className="grid grid-cols-2 gap-3">
+              {/* 4. Round Duration, Rounds & Player Limit */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="space-y-1">
                   <label className="font-bold text-slate-700 dark:text-slate-300">Time per Round</label>
                   <div className="grid grid-cols-3 gap-1">
@@ -813,6 +812,27 @@ export const Lobby: React.FC<LobbyProps> = ({
                       </button>
                     ))}
                   </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700 dark:text-slate-300">Max Players</label>
+                  <div className="grid grid-cols-5 gap-1">
+                    {Array.from({ length: 9 }, (_, index) => index + 2).map((count) => (
+                      <button
+                        type="button"
+                        key={count}
+                        onClick={() => setMaxPlayers(count)}
+                        className={`py-1.5 rounded-xl font-bold border transition-all cursor-pointer text-center ${
+                          maxPlayers === count
+                            ? 'bg-indigo-600 text-white border-indigo-600'
+                            : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
+                        }`}
+                      >
+                        {count}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-[9px] text-slate-400">Real players only</p>
                 </div>
               </div>
 
@@ -858,35 +878,15 @@ export const Lobby: React.FC<LobbyProps> = ({
                 </div>
               </div>
 
-              {/* Bot Players & Solo Practice Toggle */}
-              <div
-                onClick={() => setEnableBots(!enableBots)}
-                className={`p-2.5 rounded-2xl border cursor-pointer transition-all flex items-center justify-between gap-2 ${
-                  enableBots
-                    ? 'bg-indigo-50/80 dark:bg-indigo-950/50 border-indigo-500 text-indigo-950 dark:text-indigo-200'
-                    : 'bg-slate-100/70 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400'
-                }`}
-              >
-                <div className="space-y-0.5 min-w-0">
-                  <div className="flex items-center gap-1.5 text-xs font-bold">
-                    <span>🤖 Allow AI Bot Companions (Optional)</span>
-                    {enableBots && <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 font-extrabold">Allowed</span>}
-                  </div>
-                  <p className="text-[10px] text-slate-500 dark:text-slate-400">
-                    Gives the host the option to add AI bots inside the room lobby
-                  </p>
+              {/* Multiplayer rooms intentionally use real participants only */}
+              <div className="p-2.5 rounded-2xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50/70 dark:bg-emerald-950/30">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-800 dark:text-emerald-200">
+                  <Users className="w-3.5 h-3.5" />
+                  <span>Real players only</span>
                 </div>
-                <div
-                  className={`w-9 h-5 rounded-full p-0.5 transition-colors shrink-0 ${
-                    enableBots ? 'bg-indigo-600' : 'bg-slate-300 dark:bg-slate-700'
-                  }`}
-                >
-                  <div
-                    className={`w-4 h-4 rounded-full bg-white transition-transform ${
-                      enableBots ? 'translate-x-4' : 'translate-x-0'
-                    }`}
-                  />
-                </div>
+                <p className="text-[10px] text-emerald-700/80 dark:text-emerald-300/80 mt-0.5">
+                  Invite 2–10 friends. AI bots are not added to multiplayer rooms.
+                </p>
               </div>
 
               {betError && (

@@ -38,8 +38,6 @@ interface GameContextType {
   joinRoom: (roomIdentifier: string) => void;
   quickJoin: () => void;
   startGame: () => void;
-  addBot: (botName?: string) => void;
-  removeBot: (botId?: string) => void;
   selectWord: (choice: WordChoice) => void;
   sendCanvasAction: (action: CanvasAction) => void;
   clearCanvas: () => void;
@@ -379,16 +377,6 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     socket.emit('game:start');
   };
 
-  const addBot = (botName?: string) => {
-    const socket = getSocket();
-    socket.emit('room:add_bot', { botName });
-  };
-
-  const removeBot = (botId?: string) => {
-    const socket = getSocket();
-    socket.emit('room:remove_bot', { botId });
-  };
-
   const selectWord = (choice: WordChoice) => {
     const socket = getSocket();
     socket.emit('word:select', { choice });
@@ -454,8 +442,6 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         joinRoom,
         quickJoin,
         startGame,
-        addBot,
-        removeBot,
         selectWord,
         sendCanvasAction,
         clearCanvas,

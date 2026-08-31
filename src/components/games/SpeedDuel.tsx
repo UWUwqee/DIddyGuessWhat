@@ -16,6 +16,7 @@ import {
   Award,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { useGame } from '../../context/GameContext';
 import { soundManager } from '../../utils/soundEffects';
 import { DUEL_PROMPTS } from '../../data/arcadeData';
 import { AvatarRenderer } from '../AvatarRenderer';
@@ -27,6 +28,14 @@ export const SpeedDuel: React.FC<{ onBackToHub: () => void; aiConfig?: AiGameCon
   aiConfig = null,
 }) => {
   const { user, updateStats } = useAuth();
+  const { gameState: roomState } = useGame();
+  const isMultiplayerRoom = Boolean(
+    roomState?.roomId && roomState.settings?.gameMode === 'speed_duel'
+  );
+  const roomOpponent = roomState?.players.find(
+    (player) => player.isConnected && player.id !== user?.id
+  );
+  const rivalName = roomOpponent?.username || 'PixelSamurai';
 
   const [topic, setTopic] = useState<string>(DUEL_PROMPTS[0]);
   const [phase, setPhase] = useState<'ready' | 'dueling' | 'judging' | 'results'>('ready');
@@ -42,7 +51,8 @@ export const SpeedDuel: React.FC<{ onBackToHub: () => void; aiConfig?: AiGameCon
   const [selectedColor, setSelectedColor] = useState('#EF4444');
   const [userStrokeCount, setUserStrokeCount] = useState(0);
 
-  // Player 2 (Bot Rival "PixelSamurai") canvas
+  // Player 2 canvas. Solo mode uses the procedural AI rival; a room uses the
+  // participant name supplied by the server.
   const canvasRivalRef = useRef<HTMLCanvasElement | null>(null);
 
   // Judging Scores
@@ -59,8 +69,9 @@ export const SpeedDuel: React.FC<{ onBackToHub: () => void; aiConfig?: AiGameCon
     setPhase('dueling');
     soundManager.playTurnStart();
 
-    // Start Bot rival automatic creative sketching simulation
-    simulateRivalDrawing();
+    // Solo mode has a local AI rival. Room mode keeps the rival canvas owned by
+    // the connected participant instead of silently drawing a fake opponent.
+    if (!isMultiplayerRoom) simulateRivalDrawing();
   };
 
   const clearAllCanvases = () => {
@@ -73,7 +84,7 @@ export const SpeedDuel: React.FC<{ onBackToHub: () => void; aiConfig?: AiGameCon
     });
   };
 
-  // Simulate rival bot drawing with procedural bezier curve strokes
+  // Simulate the solo-mode AI rival with procedural bezier curve strokes.
   const simulateRivalDrawing = () => {
     const rivalCanvas = canvasRivalRef.current;
     if (!rivalCanvas) return;
@@ -175,7 +186,7 @@ export const SpeedDuel: React.FC<{ onBackToHub: () => void; aiConfig?: AiGameCon
     setTimeout(() => {
       // Calculate realistic judge score based on strokes, detail & dynamism
       const baseUser = Math.min(95, Math.max(50, userStrokeCount * 9 + 40));
-      const baseRival = Math.floor(65 + Math.random() * 25);
+      const baseRival = isMultiplayerRoom ? 0 : Math.floor(65 + Math.random() * 25);
 
       setUserScore(baseUser);
       setRivalScore(baseRival);
@@ -340,19 +351,19 @@ export const SpeedDuel: React.FC<{ onBackToHub: () => void; aiConfig?: AiGameCon
           </div>
         </div>
 
-        {/* Player 2 (Bot Rival PixelSamurai) */}
+        {/* Player 2 (room participant or AI rival) */}
         <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-4 shadow-sm space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-purple-100 dark:bg-purple-950 flex items-center justify-center text-purple-600 dark:text-purple-400">
-                <Bot className="w-4 h-4" />
+                  <div className="w-8 h-8 rounded-full bg-purple-100 dark:bg-purple-950 flex items-center justify-center text-purple-600 dark:text-purple-400">
+                    {isMultiplayerRoom ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
               </div>
               <div>
                 <p className="text-xs font-bold text-slate-900 dark:text-white">
-                  PixelSamurai (AI Rival)
+                      {isMultiplayerRoom ? rivalName : 'PixelSamurai (AI Rival)'}
                 </p>
                 <span className="text-[10px] text-purple-600 dark:text-purple-400 font-semibold">
-                  Opponent Canvas
+                      {isMultiplayerRoom ? 'Room opponent' : 'Opponent Canvas'}
                 </span>
               </div>
             </div>
@@ -408,7 +419,7 @@ export const SpeedDuel: React.FC<{ onBackToHub: () => void; aiConfig?: AiGameCon
               )}
             </div>
             <h3 className="text-xl font-black">
-              {winner === 'user' ? 'Victory! You Won the Duel!' : 'PixelSamurai Won this Round!'}
+              {winner === 'user' ? 'Victory! You Won the Duel!' : `${rivalName} Won this Round!`}
             </h3>
             <p className="text-xs text-slate-400">
               {winner === 'user'

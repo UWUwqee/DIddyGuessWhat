@@ -254,12 +254,20 @@ function calculateLevenshtein(a: string, b: string): number {
   return matrix[bn][an];
 }
 
+function isBotPlayer(player: Player): boolean {
+  return typeof player.id === 'string' && player.id.startsWith('bot_');
+}
+
+function getConnectedHumanPlayers(room: ServerRoom): Player[] {
+  return room.state.players.filter(player => player.isConnected && !isBotPlayer(player));
+}
+
 function getPublicRoomsList(): RoomSummary[] {
   const publicRooms: RoomSummary[] = [];
   ROOMS.forEach(room => {
-    const activeCount = room.state.players.filter(p => p.isConnected).length;
+    const activeCount = getConnectedHumanPlayers(room).length;
     // Only return non-private rooms with active players and open slots
-    if (!room.settings.isPrivate && activeCount > 0 && activeCount < room.settings.maxPlayers) {
+    if (!room.settings.isPrivate && room.state.status === 'lobby' && activeCount > 0 && activeCount < room.settings.maxPlayers) {
       publicRooms.push({
         id: room.id,
         name: room.name,
@@ -337,7 +345,9 @@ io.on('connection', (socket: Socket) => {
         customWords: settings.customWords || [],
         isPrivate: settings.isPrivate ?? false,
         allowHints: settings.allowHints ?? true,
-        botPlayersEnabled: settings.botPlayersEnabled ?? false,
+        // Multiplayer rooms always use real participants. Solo AI remains
+        // available through the separate VS AI arcade flow.
+        botPlayersEnabled: false,
         betting: settings.betting,
         gameMode: (settings.gameMode || 'multiplayer_draw') as ArcadeGameMode,
       },
@@ -358,7 +368,20 @@ io.on('connection', (socket: Socket) => {
         timeLeft: settings.roundDuration || 60,
         totalTime: settings.roundDuration || 60,
         players: [hostPlayer],
-        settings,
+        // Keep the state and server-normalized settings in sync. Arcade clients
+        // use this roster/config after the host starts a room match.
+        settings: {
+          roundDuration: settings.roundDuration || 60,
+          maxRounds: settings.maxRounds || 3,
+          maxPlayers: Math.min(Math.max(Number(settings.maxPlayers) || 8, 2), 10),
+          wordCategory: settings.wordCategory || 'all',
+          customWords: settings.customWords || [],
+          isPrivate: settings.isPrivate ?? false,
+          allowHints: settings.allowHints ?? true,
+          botPlayersEnabled: false,
+          betting: settings.betting,
+          gameMode: (settings.gameMode || 'multiplayer_draw') as ArcadeGameMode,
+        },
       },
       drawingHistory: [],
       messages: [],
@@ -370,9 +393,7 @@ io.on('connection', (socket: Socket) => {
     };
 
     // Ensure no accidental bot players are present when bots are not enabled
-    if (!newRoom.settings.botPlayersEnabled) {
-      newRoom.state.players = newRoom.state.players.filter(p => !(typeof p.id === 'string' && p.id.startsWith('bot_')));
-    }
+    newRoom.state.players = newRoom.state.players.filter(p => !isBotPlayer(p));
 
     ROOMS.set(roomId, newRoom);
     currentRoomId = roomId;
@@ -404,19 +425,22 @@ io.on('connection', (socket: Socket) => {
       return;
     }
 
-    if (room.state.players.length >= room.settings.maxPlayers) {
-      socket.emit('room:error', { message: 'Room is full.' });
-      return;
-    }
-
-    // Reject bot join attempts unless room explicitly allows bots
-    if ((player.id || '').startsWith('bot_') && !room.settings.botPlayersEnabled) {
-      socket.emit('room:error', { message: 'Bots are disabled for this room.' });
+    // Multiplayer rooms accept real participants only.
+    if (isBotPlayer(player)) {
+      socket.emit('room:error', { message: 'Multiplayer rooms accept real players only.' });
       return;
     }
 
     // Check if player rejoining
     const existingIndex = room.state.players.findIndex(p => p.id === player.id);
+    if (existingIndex < 0 && room.state.status !== 'lobby') {
+      socket.emit('room:error', { message: 'This game has already started. Join the next round.' });
+      return;
+    }
+    if (existingIndex < 0 && getConnectedHumanPlayers(room).length >= room.settings.maxPlayers) {
+      socket.emit('room:error', { message: 'Room is full.' });
+      return;
+    }
     const newPlayer: Player = {
       ...player,
       socketId: socket.id,
@@ -463,7 +487,7 @@ io.on('connection', (socket: Socket) => {
   socket.on('room:quick_join', ({ player }: { player: Player }) => {
     let targetRoom: ServerRoom | undefined;
     ROOMS.forEach(r => {
-      if (!r.settings.isPrivate && r.state.players.length < r.settings.maxPlayers && r.state.status === 'lobby') {
+      if (!r.settings.isPrivate && getConnectedHumanPlayers(r).length < r.settings.maxPlayers && r.state.status === 'lobby') {
         targetRoom = r;
       }
     });
@@ -542,109 +566,6 @@ io.on('connection', (socket: Socket) => {
     }
   });
 
-  // Add Bot Player to room (Host only)
-  socket.on('room:add_bot', async ({ botName }: { botName?: string } = {}) => {
-    if (!currentRoomId) return;
-    const room = ROOMS.get(currentRoomId);
-    if (!room) return;
-
-    const caller = room.state.players.find(p => p.id === currentPlayerId);
-    if (!caller?.isHost) {
-      socket.emit('room:error', { message: 'Only host can add bot players.' });
-      return;
-    }
-
-    if (room.state.players.length >= room.settings.maxPlayers) {
-      socket.emit('room:error', { message: 'Room has reached maximum player capacity.' });
-      return;
-    }
-
-    const botNames = ['Leonardo AI', 'Picasso Bot', 'Cyber Doodler', 'Pixel Master', 'Chroma Bot', 'Neon Genius', 'Retro Bot'];
-    const existingBotCount = room.state.players.filter(p => typeof p.id === 'string' && p.id.startsWith('bot_')).length;
-    const chosenName = botName || botNames[existingBotCount % botNames.length] || `Bot ${existingBotCount + 1}`;
-    const botAvatars = ['🤖', '🎨', '👾', '✨', '⚡', '🎭', '🔮'];
-    const chosenAvatar = botAvatars[existingBotCount % botAvatars.length];
-    const botColors = ['#6366F1', '#EC4899', '#10B981', '#F59E0B', '#8B5CF6', '#06B6D4'];
-    const chosenColor = botColors[existingBotCount % botColors.length];
-
-    const botPlayer: Player = {
-      id: 'bot_' + Math.random().toString(36).substring(2, 9),
-      username: chosenName,
-      avatar: chosenAvatar,
-      color: chosenColor,
-      isHost: false,
-      isDrawing: false,
-      hasGuessed: false,
-      score: 0,
-      roundScore: 0,
-      streak: 0,
-      isConnected: true,
-    };
-
-    room.settings.botPlayersEnabled = true;
-    room.state.players.push(botPlayer);
-
-    io.to(room.id).emit('chat:message', {
-      id: 'sys_' + Date.now(),
-      senderName: 'System',
-      text: `🤖 ${botPlayer.username} joined the lobby!`,
-      type: 'system',
-      timestamp: Date.now(),
-    });
-
-    io.to(room.id).emit('room:state', sanitizeStateForClient(room));
-    broadcastPublicRoomsList();
-    saveRoomToFirestore(room).catch(() => {});
-  });
-
-  // Remove Bot Player from room (Host only)
-  socket.on('room:remove_bot', async ({ botId }: { botId?: string } = {}) => {
-    if (!currentRoomId) return;
-    const room = ROOMS.get(currentRoomId);
-    if (!room) return;
-
-    const caller = room.state.players.find(p => p.id === currentPlayerId);
-    if (!caller?.isHost) {
-      socket.emit('room:error', { message: 'Only host can remove bot players.' });
-      return;
-    }
-
-    let removedBot: Player | undefined;
-    if (botId) {
-      const idx = room.state.players.findIndex(p => p.id === botId && typeof p.id === 'string' && p.id.startsWith('bot_'));
-      if (idx >= 0) {
-        removedBot = room.state.players.splice(idx, 1)[0];
-      }
-    } else {
-      // Remove last bot
-      for (let i = room.state.players.length - 1; i >= 0; i--) {
-        if (typeof room.state.players[i].id === 'string' && room.state.players[i].id.startsWith('bot_')) {
-          removedBot = room.state.players.splice(i, 1)[0];
-          break;
-        }
-      }
-    }
-
-    if (removedBot) {
-      const remainingBots = room.state.players.filter(p => typeof p.id === 'string' && p.id.startsWith('bot_'));
-      if (remainingBots.length === 0) {
-        room.settings.botPlayersEnabled = false;
-      }
-
-      io.to(room.id).emit('chat:message', {
-        id: 'sys_' + Date.now(),
-        senderName: 'System',
-        text: `👋 ${removedBot.username} left the lobby.`,
-        type: 'system',
-        timestamp: Date.now(),
-      });
-
-      io.to(room.id).emit('room:state', sanitizeStateForClient(room));
-      broadcastPublicRoomsList();
-      saveRoomToFirestore(room).catch(() => {});
-    }
-  });
-
   // 4. Start Game (Host only) — dispatcher by gameMode
   socket.on('game:start', async () => {
     if (!currentRoomId) return;
@@ -661,10 +582,21 @@ io.on('connection', (socket: Socket) => {
     const rawGameMode = (room.settings && (room.settings as any).gameMode) || (room.state.settings && (room.state.settings as any).gameMode) || 'multiplayer_draw';
     const gameMode = typeof rawGameMode === 'string' ? rawGameMode.toLowerCase() : 'multiplayer_draw';
 
-    const activePlayers = room.state.players.filter(p => p.isConnected);
-    if (activePlayers.length < 1) {
+    // Never let an AI entry occupy a multiplayer slot. Remove legacy or
+    // previously-added bot records before validating the real-player roster.
+    const hadBots = room.state.players.some(isBotPlayer);
+    if (hadBots) {
+      room.state.players = room.state.players.filter(player => !isBotPlayer(player));
+      room.settings.botPlayersEnabled = false;
+      if (room.state.settings) room.state.settings.botPlayersEnabled = false;
+      io.to(room.id).emit('room:state', sanitizeStateForClient(room));
+    }
+
+    const activePlayers = getConnectedHumanPlayers(room);
+    const minimumPlayers = 2;
+    if (activePlayers.length < minimumPlayers) {
       socket.emit('room:error', {
-        message: 'Need at least 1 player to start!',
+        message: 'Need at least 2 connected real players to start this multiplayer game.',
       });
       return;
     }
@@ -696,7 +628,7 @@ io.on('connection', (socket: Socket) => {
     if (gameMode === 'multiplayer_draw' || gameMode === 'drawing') {
       if (activePlayers.length < 2) {
         socket.emit('room:error', {
-          message: 'Need at least 2 players to start Drawing Arena! Invite a friend with the Room Code or click "+ Add AI Bot".',
+          message: 'Need at least 2 connected real players to start Drawing Arena. Invite a friend with the Room Code.',
         });
         return;
       }

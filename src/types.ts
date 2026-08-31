@@ -101,7 +101,7 @@ export interface RoomSettings {
   gameMode?: ArcadeGameMode;
   roundDuration: number; // 30, 45, 60, 80, 90
   maxRounds: number; // 2, 3, 5, 7
-  maxPlayers: number; // 2 to 12
+  maxPlayers: number; // 2 to 10
   wordCategory: WordCategory;
   customWords: string[];
   isPrivate: boolean;

@@ -19,6 +19,7 @@ import {
   HelpCircle,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { useGame } from '../../context/GameContext';
 import { soundManager } from '../../utils/soundEffects';
 import { isValidEnglishWord, SYLLABLE_PROMPTS, SyllablePromptConfig } from '../../utils/dictionary';
 import { AiGameConfig } from '../VsAiArena';
@@ -31,6 +32,7 @@ interface WordBombProps {
 
 export const WordBomb: React.FC<WordBombProps> = ({ onBackToHub, aiConfig = null }) => {
   const { user, updateStats } = useAuth();
+  const { gameState: roomState } = useGame();
 
   // Game state
   const [gameState, setGameState] = useState<'intro' | 'playing' | 'exploded' | 'victory'>('intro');
@@ -55,11 +57,20 @@ export const WordBomb: React.FC<WordBombProps> = ({ onBackToHub, aiConfig = null
 
   const inputRef = useRef<HTMLInputElement>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const roomInitializedRef = useRef(false);
 
   const currentPrompt = SYLLABLE_PROMPTS[currentPromptIndex];
+  const isMultiplayerRoom = Boolean(
+    roomState?.roomId && roomState.settings?.gameMode === 'bomb_chain'
+  );
+  const roomOpponent = roomState?.players.find(
+    (player) => player.isConnected && player.id !== user?.id
+  );
+  const opponentName = roomOpponent?.username || 'SparkyBot';
 
   // Start new game
   const handleStartGame = (withBot: boolean = true) => {
+    if (isMultiplayerRoom) withBot = false;
     setBotOpponent(withBot);
     setGameState('playing');
     setLives(3);
@@ -71,6 +82,23 @@ export const WordBomb: React.FC<WordBombProps> = ({ onBackToHub, aiConfig = null
     pickNewPrompt(10);
     soundManager.playRoundStart();
   };
+
+  // Room matches must not silently fall back to the local bot duel. The room
+  // server has already started the match, so each participant can enter the
+  // same room-mode screen without an extra local start click.
+  useEffect(() => {
+    if (
+      !isMultiplayerRoom ||
+      roomState?.status === 'lobby' ||
+      !roomOpponent ||
+      roomInitializedRef.current
+    ) {
+      return;
+    }
+
+    roomInitializedRef.current = true;
+    handleStartGame(false);
+  }, [isMultiplayerRoom, roomState?.status, roomOpponent?.id]);
 
   const pickNewPrompt = (timeAllowed: number = 10) => {
     const randomIndex = Math.floor(Math.random() * SYLLABLE_PROMPTS.length);
@@ -320,27 +348,35 @@ export const WordBomb: React.FC<WordBombProps> = ({ onBackToHub, aiConfig = null
               <p className="text-[10px] text-slate-500">Up to 3x Points</p>
             </div>
             <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 flex flex-col items-center">
-              <Bot className="w-6 h-6 text-indigo-500 mb-1" />
-              <p className="font-bold text-slate-800 dark:text-slate-200">Bot Relay</p>
-              <p className="text-[10px] text-slate-500">Duel SparkyBot</p>
+              {isMultiplayerRoom ? (
+                <User className="w-6 h-6 text-indigo-500 mb-1" />
+              ) : (
+                <Bot className="w-6 h-6 text-indigo-500 mb-1" />
+              )}
+              <p className="font-bold text-slate-800 dark:text-slate-200">
+                {isMultiplayerRoom ? 'Room Relay' : 'Bot Relay'}
+              </p>
+              <p className="text-[10px] text-slate-500">
+                {isMultiplayerRoom ? opponentName : 'Duel SparkyBot'}
+              </p>
             </div>
           </div>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-4">
             <button
-              onClick={() => handleStartGame(true)}
+              onClick={() => handleStartGame(isMultiplayerRoom ? false : true)}
               className="w-full sm:w-auto px-8 py-4 rounded-2xl font-black text-sm text-white bg-gradient-to-r from-rose-600 via-amber-600 to-yellow-600 hover:from-rose-500 hover:to-yellow-500 transition-all shadow-xl shadow-rose-600/30 flex items-center justify-center gap-2 hover:scale-105 active:scale-95"
             >
               <Flame className="w-5 h-5 fill-white" />
-              <span>Start 1v1 Bot Duel</span>
+              <span>{isMultiplayerRoom ? 'Start Room Match' : 'Start 1v1 Bot Duel'}</span>
             </button>
 
-            <button
+            {!isMultiplayerRoom && <button
               onClick={() => handleStartGame(false)}
               className="w-full sm:w-auto px-6 py-4 rounded-2xl font-bold text-sm text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all"
             >
               <span>Solo Survival Mode</span>
-            </button>
+            </button>}
           </div>
         </motion.div>
       )}
@@ -416,7 +452,7 @@ export const WordBomb: React.FC<WordBombProps> = ({ onBackToHub, aiConfig = null
               <div className="flex items-center justify-between text-xs font-bold">
                 <span className="text-slate-400 flex items-center gap-1.5">
                   {botTurn ? <Bot className="w-4 h-4 text-indigo-500" /> : <Zap className="w-4 h-4 text-amber-500" />}
-                  {botTurn ? 'BOT TURN' : 'YOUR TURN'}
+                  {botTurn ? `${opponentName.toUpperCase()} TURN` : 'YOUR TURN'}
                 </span>
                 <span
                   className={`font-mono text-sm font-black ${
@@ -470,7 +506,7 @@ export const WordBomb: React.FC<WordBombProps> = ({ onBackToHub, aiConfig = null
               disabled={botTurn}
               placeholder={
                 botTurn
-                  ? 'SparkyBot is answering...'
+                  ? `${opponentName} is answering...`
                   : `Type word with "${currentPrompt.prompt}" & press ENTER...`
               }
               className="w-full px-6 py-4 text-center uppercase tracking-widest text-xl font-black bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-2xl border-2 border-slate-200 dark:border-slate-800 focus:border-amber-500 focus:outline-none shadow-lg disabled:opacity-50"
@@ -543,7 +579,7 @@ export const WordBomb: React.FC<WordBombProps> = ({ onBackToHub, aiConfig = null
 
           <div className="flex items-center justify-center gap-3 pt-2">
             <button
-              onClick={() => handleStartGame(botOpponent)}
+              onClick={() => handleStartGame(isMultiplayerRoom ? false : botOpponent)}
               className="px-6 py-3 rounded-2xl font-black text-xs text-white bg-indigo-600 hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-600/20 flex items-center gap-2"
             >
               <RotateCcw className="w-4 h-4" />
@@ -567,7 +603,7 @@ export const WordBomb: React.FC<WordBombProps> = ({ onBackToHub, aiConfig = null
         gameTitle="Word Bomb Chain"
         onRematch={() => {
           setShowWagerModal(false);
-          handleStartGame(botOpponent);
+          handleStartGame(isMultiplayerRoom ? false : botOpponent);
         }}
         onBackToHub={onBackToHub}
       />
