@@ -22,7 +22,7 @@ import confetti from 'canvas-confetti';
 
 const STORAGE_KEY = 'guesswhat_daily_missions_v2';
 
-// Difficulty-based rewards: Easy (10-20k), Medium (20-35k), Hard (35-50k) per currency
+// Difficulty-based rewards: Easy (10k), Medium (30k), Hard (50k) PER CURRENCY - NOT MILLIONS!
 const DEFAULT_MISSIONS: DailyMission[] = [
   {
     id: 'play_3_matches',
@@ -36,8 +36,8 @@ const DEFAULT_MISSIONS: DailyMission[] = [
     claimed: false,
     difficulty: 'easy',
     reward: {
-      diamonds: '15000000', // 15M (Easy tier)
-      amethysts: '15000000',
+      diamonds: '10000', // 10K (Easy tier)
+      amethysts: '10000',
       xp: 100,
     },
   },
@@ -53,9 +53,9 @@ const DEFAULT_MISSIONS: DailyMission[] = [
     claimed: false,
     difficulty: 'medium',
     reward: {
-      diamonds: '25000000', // 25M (Medium tier)
-      amethysts: '25000000',
-      jades: '25000000',
+      diamonds: '30000', // 30K (Medium tier)
+      amethysts: '30000',
+      jades: '30000',
       xp: 200,
     },
   },
@@ -71,8 +71,8 @@ const DEFAULT_MISSIONS: DailyMission[] = [
     claimed: false,
     difficulty: 'easy',
     reward: {
-      diamonds: '15000000', // 15M (Easy tier)
-      amethysts: '15000000',
+      diamonds: '10000', // 10K (Easy tier)
+      amethysts: '10000',
       xp: 100,
     },
   },
@@ -88,9 +88,9 @@ const DEFAULT_MISSIONS: DailyMission[] = [
     claimed: false,
     difficulty: 'medium',
     reward: {
-      diamonds: '25000000', // 25M (Medium tier)
-      amethysts: '25000000',
-      jades: '25000000',
+      diamonds: '30000', // 30K (Medium tier)
+      amethysts: '30000',
+      jades: '30000',
       xp: 200,
     },
   },
@@ -106,10 +106,10 @@ const DEFAULT_MISSIONS: DailyMission[] = [
     claimed: false,
     difficulty: 'hard',
     reward: {
-      diamonds: '50000000', // 50M (Hard tier)
-      amethysts: '50000000',
-      jades: '50000000',
-      rubies: '50000000',
+      diamonds: '50000', // 50K (Hard tier)
+      amethysts: '50000',
+      jades: '50000',
+      rubies: '50000',
       xp: 300,
     },
   },
@@ -314,22 +314,22 @@ export const DailyMissionsModal: React.FC<DailyMissionsModalProps> = ({ isOpen, 
                         <div className="flex items-center gap-2 mt-2 flex-wrap text-[11px] font-black">
                           {mission.reward.diamonds && (
                             <span className="px-2 py-0.5 rounded-lg bg-sky-50 dark:bg-sky-950 text-sky-600 dark:text-sky-400 border border-sky-200 dark:border-sky-800">
-                              +{(parseInt(mission.reward.diamonds) / 1000000).toFixed(0)}M 💎
+                              +{(parseInt(mission.reward.diamonds) / 1000).toFixed(0)}K 💎
                             </span>
                           )}
                           {mission.reward.amethysts && (
                             <span className="px-2 py-0.5 rounded-lg bg-purple-50 dark:bg-purple-950 text-purple-600 dark:text-purple-400 border border-purple-200 dark:border-purple-800">
-                              +{(parseInt(mission.reward.amethysts) / 1000000).toFixed(0)}M 🔮
+                              +{(parseInt(mission.reward.amethysts) / 1000).toFixed(0)}K 🔮
                             </span>
                           )}
                           {mission.reward.rubies && (
                             <span className="px-2 py-0.5 rounded-lg bg-rose-50 dark:bg-rose-950 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800">
-                              +{(parseInt(mission.reward.rubies) / 1000000).toFixed(0)}M ♦️
+                              +{(parseInt(mission.reward.rubies) / 1000).toFixed(0)}K ♦️
                             </span>
                           )}
                           {mission.reward.jades && (
                             <span className="px-2 py-0.5 rounded-lg bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
-                              +{(parseInt(mission.reward.jades) / 1000000).toFixed(0)}M 🍵
+                              +{(parseInt(mission.reward.jades) / 1000).toFixed(0)}K 🍵
                             </span>
                           )}
                           <span className="px-2 py-0.5 rounded-lg bg-amber-50 dark:bg-amber-950 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
