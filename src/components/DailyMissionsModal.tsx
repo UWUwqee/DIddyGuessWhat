@@ -20,8 +20,9 @@ import { useAuth } from '../context/AuthContext';
 import { soundManager } from '../utils/soundEffects';
 import confetti from 'canvas-confetti';
 
-const STORAGE_KEY = 'guesswhat_daily_missions_v1';
+const STORAGE_KEY = 'guesswhat_daily_missions_v2';
 
+// Difficulty-based rewards: Easy (10-20k), Medium (20-35k), Hard (35-50k) per currency
 const DEFAULT_MISSIONS: DailyMission[] = [
   {
     id: 'play_3_matches',
@@ -33,10 +34,11 @@ const DEFAULT_MISSIONS: DailyMission[] = [
     progress: 0,
     completed: false,
     claimed: false,
+    difficulty: 'easy',
     reward: {
-      diamonds: '15000000', // 15M
-      amethysts: '5000000',
-      xp: 250,
+      diamonds: '15000000', // 15M (Easy tier)
+      amethysts: '15000000',
+      xp: 100,
     },
   },
   {
@@ -49,10 +51,12 @@ const DEFAULT_MISSIONS: DailyMission[] = [
     progress: 0,
     completed: false,
     claimed: false,
+    difficulty: 'medium',
     reward: {
-      diamonds: '25000000', // 25M
-      rubies: '2000000',
-      xp: 400,
+      diamonds: '25000000', // 25M (Medium tier)
+      amethysts: '25000000',
+      jades: '25000000',
+      xp: 200,
     },
   },
   {
@@ -65,9 +69,11 @@ const DEFAULT_MISSIONS: DailyMission[] = [
     progress: 0,
     completed: false,
     claimed: false,
+    difficulty: 'easy',
     reward: {
-      jades: '10000000', // 10M
-      xp: 150,
+      diamonds: '15000000', // 15M (Easy tier)
+      amethysts: '15000000',
+      xp: 100,
     },
   },
   {
@@ -80,10 +86,12 @@ const DEFAULT_MISSIONS: DailyMission[] = [
     progress: 0,
     completed: false,
     claimed: false,
+    difficulty: 'medium',
     reward: {
-      diamonds: '10000000',
-      amethysts: '8000000',
-      xp: 300,
+      diamonds: '25000000', // 25M (Medium tier)
+      amethysts: '25000000',
+      jades: '25000000',
+      xp: 200,
     },
   },
   {
@@ -96,10 +104,13 @@ const DEFAULT_MISSIONS: DailyMission[] = [
     progress: 0,
     completed: false,
     claimed: false,
+    difficulty: 'hard',
     reward: {
-      diamonds: '20000000',
-      rubies: '3000000',
-      xp: 350,
+      diamonds: '50000000', // 50M (Hard tier)
+      amethysts: '50000000',
+      jades: '50000000',
+      rubies: '50000000',
+      xp: 300,
     },
   },
 ];
@@ -110,7 +121,7 @@ interface DailyMissionsModalProps {
 }
 
 export const DailyMissionsModal: React.FC<DailyMissionsModalProps> = ({ isOpen, onClose }) => {
-  const { user, updateWallet, addXp } = useAuth();
+  const { user, updateWallet } = useAuth();
   const [missions, setMissions] = useState<DailyMission[]>([]);
   const [timeLeftStr, setTimeLeftStr] = useState('');
 
@@ -188,7 +199,6 @@ export const DailyMissionsModal: React.FC<DailyMissionsModalProps> = ({ isOpen, 
     if (mission.reward.amethysts) updateWallet('amethyst', mission.reward.amethysts, 'add');
     if (mission.reward.jades) updateWallet('jade', mission.reward.jades, 'add');
     if (mission.reward.rubies) updateWallet('ruby', mission.reward.rubies, 'add');
-    if (mission.reward.xp) addXp(mission.reward.xp);
 
     const updated = missions.map(m => (m.id === mission.id ? { ...m, claimed: true } : m));
     saveMissions(updated);
@@ -196,6 +206,18 @@ export const DailyMissionsModal: React.FC<DailyMissionsModalProps> = ({ isOpen, 
 
   const completedCount = missions.filter(m => m.completed).length;
   const claimedCount = missions.filter(m => m.claimed).length;
+  const getDifficultyColor = (difficulty?: string) => {
+    switch (difficulty) {
+      case 'easy':
+        return 'bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800';
+      case 'medium':
+        return 'bg-amber-50 dark:bg-amber-950 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-800';
+      case 'hard':
+        return 'bg-rose-50 dark:bg-rose-950 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-800';
+      default:
+        return 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400';
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -274,9 +296,16 @@ export const DailyMissionsModal: React.FC<DailyMissionsModalProps> = ({ isOpen, 
                         {mission.icon}
                       </div>
                       <div className="min-w-0">
-                        <h4 className="text-sm font-black text-slate-900 dark:text-white truncate">
-                          {mission.title}
-                        </h4>
+                        <div className="flex items-center gap-2">
+                          <h4 className="text-sm font-black text-slate-900 dark:text-white truncate">
+                            {mission.title}
+                          </h4>
+                          {mission.difficulty && (
+                            <span className={`text-[10px] font-black px-2 py-0.5 rounded-full border uppercase tracking-wide ${getDifficultyColor(mission.difficulty)}`}>
+                              {mission.difficulty}
+                            </span>
+                          )}
+                        </div>
                         <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5 line-clamp-2 leading-relaxed">
                           {mission.description}
                         </p>
@@ -285,22 +314,22 @@ export const DailyMissionsModal: React.FC<DailyMissionsModalProps> = ({ isOpen, 
                         <div className="flex items-center gap-2 mt-2 flex-wrap text-[11px] font-black">
                           {mission.reward.diamonds && (
                             <span className="px-2 py-0.5 rounded-lg bg-sky-50 dark:bg-sky-950 text-sky-600 dark:text-sky-400 border border-sky-200 dark:border-sky-800">
-                              +15M 💎
+                              +{(parseInt(mission.reward.diamonds) / 1000000).toFixed(0)}M 💎
                             </span>
                           )}
                           {mission.reward.amethysts && (
                             <span className="px-2 py-0.5 rounded-lg bg-purple-50 dark:bg-purple-950 text-purple-600 dark:text-purple-400 border border-purple-200 dark:border-purple-800">
-                              +5M 🔮
+                              +{(parseInt(mission.reward.amethysts) / 1000000).toFixed(0)}M 🔮
                             </span>
                           )}
                           {mission.reward.rubies && (
                             <span className="px-2 py-0.5 rounded-lg bg-rose-50 dark:bg-rose-950 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800">
-                              +2M ♦️
+                              +{(parseInt(mission.reward.rubies) / 1000000).toFixed(0)}M ♦️
                             </span>
                           )}
                           {mission.reward.jades && (
                             <span className="px-2 py-0.5 rounded-lg bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
-                              +10M 🍵
+                              +{(parseInt(mission.reward.jades) / 1000000).toFixed(0)}M 🍵
                             </span>
                           )}
                           <span className="px-2 py-0.5 rounded-lg bg-amber-50 dark:bg-amber-950 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
@@ -321,7 +350,7 @@ export const DailyMissionsModal: React.FC<DailyMissionsModalProps> = ({ isOpen, 
                         <button
                           type="button"
                           onClick={() => handleClaim(mission)}
-                          className="px-4 py-2 rounded-xl text-xs font-black text-white bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 shadow-md shadow-amber-500/25 active:scale-95 cursor-pointer animate-pulse"
+                          className="px-4 py-2 rounded-xl text-xs font-black text-white bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 shadow-md shadow-amber-500/20 transition-all active:scale-95 cursor-pointer"
                         >
                           Claim Reward
                         </button>
