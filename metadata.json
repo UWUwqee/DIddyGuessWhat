@@ -1,8 +1,0 @@
-{
-  "name": "Remix Guess What? - Multiplayer Drawing \u0026 Guessing Game",
-  "description": "A fast-paced real-time multiplayer drawing and guessing game with live synchronized canvas, real-time chat \u0026 guess validation, room lobbies, dynamic scoring, and global leaderboards.",
-  "requestFramePermissions": [],
-  "majorCapabilities": [
-    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
-  ]
-}
