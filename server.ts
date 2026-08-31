@@ -332,7 +332,7 @@ io.on('connection', (socket: Socket) => {
       settings: {
         roundDuration: settings.roundDuration || 60,
         maxRounds: settings.maxRounds || 3,
-        maxPlayers: settings.maxPlayers || 8,
+        maxPlayers: Math.min(Math.max(Number(settings.maxPlayers) || 8, 2), 10),
         wordCategory: settings.wordCategory || 'all',
         customWords: settings.customWords || [],
         isPrivate: settings.isPrivate ?? false,
