@@ -19,8 +19,13 @@ import { useAuth } from '../../context/AuthContext';
 import { soundManager } from '../../utils/soundEffects';
 import { EMOJI_PUZZLES, getRandomEmojiPuzzle } from '../../data/emojiPuzzles';
 import { EmojiPuzzle } from '../../types';
+import { AiGameConfig } from '../VsAiArena';
+import { VsBotWagerBanner, VsBotPayoutModal } from '../VsBotWagerManager';
 
-export const EmojiCharades: React.FC<{ onBackToHub: () => void }> = ({ onBackToHub }) => {
+export const EmojiCharades: React.FC<{ onBackToHub: () => void; aiConfig?: AiGameConfig | null }> = ({
+  onBackToHub,
+  aiConfig = null,
+}) => {
   const { user, updateStats } = useAuth();
 
   const [currentCategory, setCurrentCategory] = useState<string>('All');
@@ -35,6 +40,10 @@ export const EmojiCharades: React.FC<{ onBackToHub: () => void }> = ({ onBackToH
   const [isSolved, setIsSolved] = useState(false);
   const [isFailed, setIsFailed] = useState(false);
   const [shake, setShake] = useState(false);
+
+  // Wager modal
+  const [showWagerModal, setShowWagerModal] = useState(false);
+  const [wagerWon, setWagerWon] = useState(false);
 
   // Load next puzzle
   const nextPuzzle = useCallback(() => {
@@ -82,6 +91,11 @@ export const EmojiCharades: React.FC<{ onBackToHub: () => void }> = ({ onBackToH
         },
         false
       );
+
+      if (aiConfig?.withBet) {
+        setWagerWon(true);
+        setTimeout(() => setShowWagerModal(true), 800);
+      }
     } else {
       // Incorrect - trigger shake animation
       setShake(true);
@@ -117,6 +131,10 @@ export const EmojiCharades: React.FC<{ onBackToHub: () => void }> = ({ onBackToH
           setIsFailed(true);
           setStreak(0);
           soundManager.playCloseGuess();
+          if (aiConfig?.withBet) {
+            setWagerWon(false);
+            setTimeout(() => setShowWagerModal(true), 800);
+          }
           return 0;
         }
         if (prev <= 8) {
@@ -131,6 +149,9 @@ export const EmojiCharades: React.FC<{ onBackToHub: () => void }> = ({ onBackToH
 
   return (
     <div className="w-full max-w-4xl mx-auto space-y-5 animate-fade-in font-sans">
+      {/* VS BOT Active Wager Bar */}
+      <VsBotWagerBanner aiConfig={aiConfig} gameTitle="Emoji Charades Rush" />
+
       {/* Top Header Card */}
       <div className="flex flex-wrap items-center justify-between gap-3 bg-white dark:bg-slate-900 p-4 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm">
         <div className="flex items-center gap-3">
@@ -349,6 +370,19 @@ export const EmojiCharades: React.FC<{ onBackToHub: () => void }> = ({ onBackToH
           </form>
         )}
       </div>
+
+      {/* VS BOT Wager Payout / Rematch Modal */}
+      <VsBotPayoutModal
+        isOpen={showWagerModal}
+        won={wagerWon}
+        aiConfig={aiConfig}
+        gameTitle="Emoji Charades Rush"
+        onRematch={() => {
+          setShowWagerModal(false);
+          nextPuzzle();
+        }}
+        onBackToHub={onBackToHub}
+      />
     </div>
   );
 };

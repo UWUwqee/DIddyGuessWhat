@@ -112,6 +112,8 @@ function normalizeStats(s?: Partial<PlayerStats>): PlayerStats {
     blindfoldScores: s?.blindfoldScores || 0,
     unoWins: s?.unoWins || 0,
     unoCardsPlayed: s?.unoCardsPlayed || 0,
+    currentStreak: s?.currentStreak || 0,
+    bestStreak: s?.bestStreak || 0,
   };
   if (typeof s?.fastestGuessSec === 'number' && !isNaN(s.fastestGuessSec)) {
     stats.fastestGuessSec = s.fastestGuessSec;
@@ -478,20 +480,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const updateStats = (statDelta: Partial<PlayerStats>, wonGame: boolean = false, gameTitle?: string) => {
     if (!user) return;
-    const prev = user.stats || {
-      gamesPlayed: 0,
-      wins: 0,
-      totalScore: 0,
-      wordsGuessed: 0,
-      drawingsCompleted: 0,
-      highestRoundScore: 0,
-      totalBetsWon: '0',
-      totalBetsPlaced: '0',
-    };
+    const prev = normalizeStats(user.stats);
 
     const deltaGames = statDelta.gamesPlayed !== undefined ? statDelta.gamesPlayed : 1;
     const deltaWins = wonGame ? 1 : (statDelta.wins || 0);
     const addedScore = statDelta.totalScore || 0;
+
+    // Streak calculation
+    const currentStreak = prev.currentStreak || 0;
+    const bestStreak = prev.bestStreak || 0;
+    let newStreak = currentStreak;
+    let newBestStreak = bestStreak;
+
+    if (wonGame) {
+      newStreak = currentStreak + 1;
+      newBestStreak = Math.max(bestStreak, newStreak);
+    } else if (deltaGames > 0) {
+      newStreak = 0;
+    }
 
     const newStats: PlayerStats = {
       gamesPlayed: (prev.gamesPlayed || 0) + deltaGames,
@@ -511,6 +517,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       blindfoldScores: Math.max(prev.blindfoldScores || 0, statDelta.blindfoldScores || 0),
       unoWins: (prev.unoWins || 0) + (statDelta.unoWins || 0),
       unoCardsPlayed: (prev.unoCardsPlayed || 0) + (statDelta.unoCardsPlayed || 0),
+      currentStreak: newStreak,
+      bestStreak: newBestStreak,
     };
 
     const bestFastest = typeof statDelta.fastestGuessSec === 'number'
@@ -533,6 +541,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (newStats.drawingsCompleted >= 10 && !badges.includes('Master Artist')) { badges.push('Master Artist'); newlyUnlocked.push('Master Artist'); }
     if (newStats.highestRoundScore >= 300 && !badges.includes('Lightning Speed')) { badges.push('Lightning Speed'); newlyUnlocked.push('Lightning Speed'); }
     if ((newStats.unoWins || 0) >= 3 && !badges.includes('UNO Master')) { badges.push('UNO Master'); newlyUnlocked.push('UNO Master'); }
+    if (newStreak >= 5 && !badges.includes('Hot Winstreak 5x')) { badges.push('Hot Winstreak 5x'); newlyUnlocked.push('Hot Winstreak 5x'); }
+    if (newStreak >= 10 && !badges.includes('Unstoppable 10x')) { badges.push('Unstoppable 10x'); newlyUnlocked.push('Unstoppable 10x'); }
+
+    // Currency calculation for game outcome
+    const hasNgip = Boolean(user.isNgip || isAdmin);
+    const multiplier = hasNgip ? 3n : 1n;
+    let updatedWallet = normalizeWallet(user.wallet);
+
+    if (wonGame) {
+      // Award base victory reward + streak bonus with 3X VIP multiplier
+      const baseDia = 10000n + BigInt(newStreak * 2500);
+      const baseAme = 5000n;
+      const baseJade = 2500n;
+      const baseRuby = 1000n;
+
+      const wonDia = (baseDia * multiplier).toString();
+      const wonAme = (baseAme * multiplier).toString();
+      const wonJade = (baseJade * multiplier).toString();
+      const wonRuby = (baseRuby * multiplier).toString();
+
+      updatedWallet = {
+        diamonds: addCurrency(updatedWallet.diamonds, wonDia),
+        amethysts: addCurrency(updatedWallet.amethysts, wonAme),
+        jades: addCurrency(updatedWallet.jades, wonJade),
+        rubies: addCurrency(updatedWallet.rubies, wonRuby),
+      };
+    }
 
     const updatedUser: UserProfile = {
       ...user,
@@ -540,6 +575,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       xp: newXp,
       level: newLevel,
       unlockedBadges: badges,
+      wallet: updatedWallet,
     };
 
     saveUser(updatedUser);
@@ -548,10 +584,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (wonGame) {
       logPlayerActivity({
         type: 'match_win',
-        title: `Match Victory in ${gameTitle || 'Arcade Arena'}!`,
-        description: `${user.username} emerged victorious (+${addedScore || 100} EXP)`,
+        title: hasNgip
+          ? `👑 3X VIP Victory in ${gameTitle || 'Arcade Arena'}! (${newStreak}x Streak 🔥)`
+          : `Match Victory in ${gameTitle || 'Arcade Arena'}! (${newStreak}x Streak 🔥)`,
+        description: `${user.username} won the match! ${hasNgip ? '(3X VIP Gem Multiplier Boosted)' : ''}`,
         gameMode: gameTitle || 'Multiplayer Match',
         pointsEarned: addedScore || 100,
+        currencyEarned: {
+          currency: 'diamond',
+          amount: (10000n * multiplier).toString(),
+        },
       });
     } else if (addedScore > 0) {
       logPlayerActivity({
@@ -1052,6 +1094,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       highestRoundScore: newStats.highestRoundScore !== undefined ? newStats.highestRoundScore : currentStats.highestRoundScore,
       totalBetsWon: newStats.totalBetsWon !== undefined ? String(newStats.totalBetsWon) : (currentStats.totalBetsWon || '0'),
       totalBetsPlaced: newStats.totalBetsPlaced !== undefined ? String(newStats.totalBetsPlaced) : (currentStats.totalBetsPlaced || '0'),
+      currentStreak: newStats.currentStreak !== undefined ? newStats.currentStreak : (currentStats.currentStreak || 0),
+      bestStreak: newStats.bestStreak !== undefined ? newStats.bestStreak : (currentStats.bestStreak || 0),
     };
     const targetFastest = newStats.fastestGuessSec !== undefined ? newStats.fastestGuessSec : currentStats.fastestGuessSec;
     if (typeof targetFastest === 'number' && !isNaN(targetFastest)) {
@@ -1084,6 +1128,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         fastestGuessSec: 0,
         totalBetsWon: '0',
         totalBetsPlaced: '0',
+        currentStreak: 0,
+        bestStreak: 0,
       },
       level: 1,
       xp: 0,

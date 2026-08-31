@@ -9,18 +9,25 @@ import {
   Flame,
   Info,
   Users,
+  Heart,
+  ThumbsUp,
+  Smile,
 } from 'lucide-react';
 import { useGame } from '../context/GameContext';
 import { useAuth } from '../context/AuthContext';
 import { AvatarRenderer } from './AvatarRenderer';
 import { NgipName, NgipBadge } from './NgipBadge';
+import { soundManager } from '../utils/soundEffects';
 
 const QUICK_REACTIONS = ['❤️', '👍', '😂', '🔥', '👏', '🤯', '🎨', '🏆'];
+const TAPBACK_EMOJIS = ['❤️', '👍', '👎', '😂', '‼️', '❓'];
 
 export const ChatBox: React.FC = () => {
-  const { messages, sendMessage, sendReaction, gameState, isDrawer, leaveRoom } = useGame();
+  const { messages, sendMessage, sendReaction, reactToMessage, gameState, isDrawer, leaveRoom } = useGame();
   const { user } = useAuth();
   const [inputText, setInputText] = useState('');
+  const [activeTapbackMsgId, setActiveTapbackMsgId] = useState<string | null>(null);
+  const lastTapRef = useRef<{ [msgId: string]: number }>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -45,6 +52,26 @@ export const ChatBox: React.FC = () => {
     if (!inputText.trim()) return;
     sendMessage(inputText.trim());
     setInputText('');
+  };
+
+  // Double-tap or long-press / double click handler
+  const handleMessageTap = (msgId: string) => {
+    const now = Date.now();
+    const lastTap = lastTapRef.current[msgId] || 0;
+    if (now - lastTap < 350) {
+      // Double tap detected! Toggle tapback popup or auto-heart
+      soundManager.playPop();
+      setActiveTapbackMsgId(prev => (prev === msgId ? null : msgId));
+      lastTapRef.current[msgId] = 0;
+    } else {
+      lastTapRef.current[msgId] = now;
+    }
+  };
+
+  const handleSelectTapback = (msgId: string, emoji: string) => {
+    soundManager.playPop();
+    reactToMessage(msgId, emoji);
+    setActiveTapbackMsgId(null);
   };
 
   const getPlaceholder = () => {
@@ -173,10 +200,16 @@ export const ChatBox: React.FC = () => {
             }
 
             // 4. Standard Player Chat / Guess (iMessage Style)
+            const showTapback = activeTapbackMsgId === msg.id;
+            const reactionsMap = (msg.reactions || {}) as Record<string, string[]>;
+            const reactionEntries = Object.entries(reactionsMap).filter(
+              ([_, uids]) => Array.isArray(uids) && uids.length > 0
+            );
+
             return (
               <div
                 key={msg.id}
-                className={`flex items-end gap-2 group ${isMe ? 'flex-row-reverse' : 'flex-row'}`}
+                className={`relative flex items-end gap-2 group ${isMe ? 'flex-row-reverse' : 'flex-row'}`}
               >
                 {/* Profile Picture Avatar */}
                 <div
@@ -187,7 +220,7 @@ export const ChatBox: React.FC = () => {
                 </div>
 
                 {/* Message Content & Name */}
-                <div className={`flex flex-col max-w-[78%] ${isMe ? 'items-end' : 'items-start'}`}>
+                <div className={`relative flex flex-col max-w-[78%] ${isMe ? 'items-end' : 'items-start'}`}>
                   {/* Sender Name above message */}
                   <div className="flex items-center gap-1 text-[11px] font-semibold text-slate-500 dark:text-slate-400 px-1 mb-0.5">
                     <NgipName
@@ -201,15 +234,71 @@ export const ChatBox: React.FC = () => {
                     </span>
                   </div>
 
-                  {/* iMessage Bubble */}
+                  {/* iMessage Floating Tapback Bar (Visible when active or double-tapped) */}
+                  {showTapback && (
+                    <div
+                      className={`absolute -top-10 z-30 flex items-center gap-1 p-1 bg-white/95 dark:bg-[#1C1C1E]/95 backdrop-blur-md rounded-full shadow-xl border border-slate-200 dark:border-slate-700 animate-in fade-in zoom-in-90 duration-150 ${
+                        isMe ? 'right-0' : 'left-0'
+                      }`}
+                    >
+                      {TAPBACK_EMOJIS.map((emoji) => {
+                        const hasReacted = (msg.reactions?.[emoji] || []).includes(user?.id || '');
+                        return (
+                          <button
+                            key={emoji}
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleSelectTapback(msg.id, emoji);
+                            }}
+                            className={`p-1.5 rounded-full hover:scale-125 transition-transform text-sm cursor-pointer select-none ${
+                              hasReacted ? 'bg-indigo-100 dark:bg-indigo-950/80 scale-110' : 'hover:bg-slate-100 dark:hover:bg-slate-800'
+                            }`}
+                          >
+                            {emoji}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {/* iMessage Bubble (Supports Double Tap / Double Click) */}
                   <div
-                    className={`px-3.5 py-2 text-[13px] leading-relaxed break-words shadow-xs select-text transition-all ${
+                    onClick={() => handleMessageTap(msg.id)}
+                    onDoubleClick={() => {
+                      soundManager.playPop();
+                      setActiveTapbackMsgId(prev => (prev === msg.id ? null : msg.id));
+                    }}
+                    title="Double-tap or double-click to add Tapback reaction"
+                    className={`relative px-3.5 py-2 text-[13px] leading-relaxed break-words shadow-xs select-text transition-all cursor-pointer select-none active:scale-[0.98] ${
                       isMe
                         ? 'bg-[#007AFF] text-white rounded-[18px] rounded-br-[4px]'
                         : 'bg-[#E9E9EB] dark:bg-[#2C2C2E] text-slate-900 dark:text-white rounded-[18px] rounded-bl-[4px]'
                     }`}
                   >
                     {msg.text}
+
+                    {/* Reaction Badges Stacked on Bubble */}
+                    {reactionEntries.length > 0 && (
+                      <div
+                        className={`absolute -bottom-2.5 flex items-center gap-0.5 px-1.5 py-0.5 bg-white dark:bg-[#1C1C1E] border border-slate-200 dark:border-slate-700 rounded-full shadow-md text-[11px] ${
+                          isMe ? 'left-2' : 'right-2'
+                        }`}
+                      >
+                        {reactionEntries.map(([emoji, uids]) => (
+                          <span
+                            key={emoji}
+                            className="flex items-center gap-0.5 font-bold text-slate-700 dark:text-slate-200"
+                            title={`${uids.length} reaction${uids.length > 1 ? 's' : ''}`}
+                          >
+                            <span>{emoji}</span>
+                            {uids.length > 1 && (
+                              <span className="text-[9px] text-slate-400">{uids.length}</span>
+                            )}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   {/* iMessage Delivered Tag for user's own messages */}

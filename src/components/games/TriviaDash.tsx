@@ -18,6 +18,8 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { soundManager } from '../../utils/soundEffects';
+import { AiGameConfig } from '../VsAiArena';
+import { VsBotWagerBanner, VsBotPayoutModal } from '../VsBotWagerManager';
 
 interface TriviaQuestion {
   id: string;
@@ -219,9 +221,10 @@ const TRIVIA_QUESTIONS: TriviaQuestion[] = [
 
 interface TriviaDashProps {
   onBackToHub: () => void;
+  aiConfig?: AiGameConfig | null;
 }
 
-export const TriviaDash: React.FC<TriviaDashProps> = ({ onBackToHub }) => {
+export const TriviaDash: React.FC<TriviaDashProps> = ({ onBackToHub, aiConfig = null }) => {
   const { user, updateStats } = useAuth();
 
   const [gameState, setGameState] = useState<'intro' | 'playing' | 'round_end' | 'game_over'>('intro');
@@ -237,6 +240,10 @@ export const TriviaDash: React.FC<TriviaDashProps> = ({ onBackToHub }) => {
   const [hasUsedHint, setHasUsedHint] = useState(false);
   const [showHint, setShowHint] = useState(false);
   const [correctCount, setCorrectCount] = useState(0);
+
+  // Wager modal
+  const [showWagerModal, setShowWagerModal] = useState(false);
+  const [wagerWon, setWagerWon] = useState(false);
 
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -353,18 +360,27 @@ export const TriviaDash: React.FC<TriviaDashProps> = ({ onBackToHub }) => {
   const handleGameOver = () => {
     soundManager.playVictory();
     setGameState('game_over');
+    const isWin = correctCount >= 5;
     updateStats(
       {
         gamesPlayed: 1,
-        wins: correctCount >= 5 ? 1 : 0,
+        wins: isWin ? 1 : 0,
         totalScore: score,
       },
-      correctCount >= 5
+      isWin
     );
+
+    if (aiConfig?.withBet) {
+      setWagerWon(isWin);
+      setShowWagerModal(true);
+    }
   };
 
   return (
     <div className="w-full max-w-4xl mx-auto space-y-4 animate-fade-in font-sans select-none">
+      {/* VS BOT Active Wager Bar */}
+      <VsBotWagerBanner aiConfig={aiConfig} gameTitle="Trivia Dash Royale" />
+
       {/* Top Header */}
       <div className="flex items-center justify-between gap-3 bg-white dark:bg-slate-900 p-4 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm">
         <button
@@ -642,6 +658,19 @@ export const TriviaDash: React.FC<TriviaDashProps> = ({ onBackToHub }) => {
           </div>
         </motion.div>
       )}
+
+      {/* VS BOT Wager Payout / Rematch Modal */}
+      <VsBotPayoutModal
+        isOpen={showWagerModal}
+        won={wagerWon}
+        aiConfig={aiConfig}
+        gameTitle="Trivia Dash Royale"
+        onRematch={() => {
+          setShowWagerModal(false);
+          handleStartGame();
+        }}
+        onBackToHub={onBackToHub}
+      />
     </div>
   );
 };

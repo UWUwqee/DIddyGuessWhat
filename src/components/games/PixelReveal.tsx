@@ -15,9 +15,12 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { soundManager } from '../../utils/soundEffects';
+import { AiGameConfig } from '../VsAiArena';
+import { VsBotWagerBanner, VsBotPayoutModal } from '../VsBotWagerManager';
 
 interface PixelRevealProps {
   onBackToHub: () => void;
+  aiConfig?: AiGameConfig | null;
 }
 
 interface MysteryItem {
@@ -294,7 +297,7 @@ const MYSTERY_ITEMS: MysteryItem[] = [
   },
 ];
 
-export const PixelReveal: React.FC<PixelRevealProps> = ({ onBackToHub }) => {
+export const PixelReveal: React.FC<PixelRevealProps> = ({ onBackToHub, aiConfig = null }) => {
   const { updateStats } = useAuth();
 
   const [gameState, setGameState] = useState<'intro' | 'playing' | 'round_solved' | 'game_over'>('intro');
@@ -306,6 +309,10 @@ export const PixelReveal: React.FC<PixelRevealProps> = ({ onBackToHub }) => {
   const [guessInput, setGuessInput] = useState('');
   const [isRevealed, setIsRevealed] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
+
+  // Wager modal
+  const [showWagerModal, setShowWagerModal] = useState(false);
+  const [wagerWon, setWagerWon] = useState(false);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const hiddenCanvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -450,6 +457,11 @@ export const PixelReveal: React.FC<PixelRevealProps> = ({ onBackToHub }) => {
         totalScore: totalScore,
         pixelsGuessed: MYSTERY_ITEMS.length,
       });
+
+      if (aiConfig?.withBet) {
+        setWagerWon(true);
+        setShowWagerModal(true);
+      }
     } else {
       startRound(currentRound + 1);
     }
@@ -457,6 +469,9 @@ export const PixelReveal: React.FC<PixelRevealProps> = ({ onBackToHub }) => {
 
   return (
     <div className="w-full max-w-4xl mx-auto space-y-6 animate-fade-in font-sans select-none">
+      {/* VS BOT Active Wager Bar */}
+      <VsBotWagerBanner aiConfig={aiConfig} gameTitle="Pixel Reveal Mystery" />
+
       {/* Header */}
       <div className="flex items-center justify-between gap-3 bg-white dark:bg-slate-900 p-4 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm">
         <button
@@ -677,6 +692,19 @@ export const PixelReveal: React.FC<PixelRevealProps> = ({ onBackToHub }) => {
           </div>
         </motion.div>
       )}
+
+      {/* VS BOT Wager Payout / Rematch Modal */}
+      <VsBotPayoutModal
+        isOpen={showWagerModal}
+        won={wagerWon}
+        aiConfig={aiConfig}
+        gameTitle="Pixel Reveal Mystery"
+        onRematch={() => {
+          setShowWagerModal(false);
+          handleStartGame();
+        }}
+        onBackToHub={onBackToHub}
+      />
     </div>
   );
 };

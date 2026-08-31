@@ -9,16 +9,12 @@ import {
   Check,
   Flame,
   Palette,
-  Trophy,
   Mail,
   Lock,
   User,
   Eye,
   EyeOff,
   AlertTriangle,
-  Gamepad2,
-  Zap,
-  Music,
 } from 'lucide-react';
 import { useAuth, COLOR_OPTIONS } from '../context/AuthContext';
 import { PRESET_AVATARS } from '../utils/avatarIcons';
@@ -150,13 +146,12 @@ export const WelcomeAuthGate: React.FC<WelcomeAuthGateProps> = ({ onEnter }) => 
           </div>
 
           <div className="space-y-1">
-            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 font-medium max-w-sm mx-auto">
-              Connect your Gmail or create an account to unlock all 11 games, live multiplayer & the Rockhestra theme song!
+            <p className="text-sm sm:text-base font-black tracking-wide">
+              <span className="text-slate-700 dark:text-slate-300">By </span>
+              <span className="bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 bg-clip-text text-transparent drop-shadow-[0_1px_2px_rgba(245,158,11,0.5)] font-black">
+                D14Dąmon
+              </span>
             </p>
-            <div className="inline-flex items-center gap-1.5 text-[11px] font-black text-pink-600 dark:text-pink-400 bg-pink-500/10 px-2.5 py-0.5 rounded-md">
-              <Music className="w-3 h-3" />
-              <span>Features Battle Hymn of the Republic (Rockhestra Version)</span>
-            </div>
           </div>
         </div>
 
@@ -422,21 +417,7 @@ export const WelcomeAuthGate: React.FC<WelcomeAuthGateProps> = ({ onEnter }) => 
           </motion.form>
         )}
 
-        {/* Feature Badges Footer */}
-        <div className="pt-3 border-t border-slate-200 dark:border-slate-800/80 flex items-center justify-around text-[11px] text-slate-500 dark:text-slate-400 font-bold">
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
-            <Gamepad2 className="w-3.5 h-3.5 text-purple-500" />
-            <span>11 Arcade Games</span>
-          </div>
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
-            <Zap className="w-3.5 h-3.5 text-amber-500" />
-            <span>Instant Cloud Sync</span>
-          </div>
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
-            <Trophy className="w-3.5 h-3.5 text-pink-500" />
-            <span>Hall of Fame</span>
-          </div>
-        </div>
+
       </motion.div>
     </div>
   );

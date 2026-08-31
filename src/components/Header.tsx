@@ -8,6 +8,8 @@ import {
   Volume2,
   VolumeX,
   ShieldAlert,
+  Gift,
+  Flame,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useGame } from '../context/GameContext';
@@ -17,6 +19,7 @@ import { GWLogo } from './GWLogo';
 import { NgipBadge, NgipName } from './NgipBadge';
 import { DarkModeToggle } from './DarkModeToggle';
 import { themeMusic, ThemeMusicState } from '../utils/themeMusic';
+import { WinstreakBanner } from './WinstreakBanner';
 
 interface HeaderProps {
   currentMode?: ArcadeGameMode;
@@ -26,6 +29,7 @@ interface HeaderProps {
   onOpenAuth: () => void;
   onOpenAuthGate?: () => void;
   onOpenAdmin?: () => void;
+  onOpenDailyMissions?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -36,6 +40,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenAuth,
   onOpenAuthGate,
   onOpenAdmin,
+  onOpenDailyMissions,
 }) => {
   const { user, isAdmin } = useAuth();
   const { gameState, leaveRoom } = useGame();
@@ -151,6 +156,20 @@ export const Header: React.FC<HeaderProps> = ({
             >
               <LogOut className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Leave</span>
+            </button>
+          )}
+
+          {/* Daily Missions & Quests Button */}
+          {onOpenDailyMissions && (
+            <button
+              type="button"
+              onClick={onOpenDailyMissions}
+              className="p-1.5 sm:px-3 sm:py-1.5 text-xs font-black text-pink-700 dark:text-pink-300 bg-pink-100/80 dark:bg-pink-950/50 hover:bg-pink-200/90 dark:hover:bg-pink-900/70 border-2 border-pink-300 dark:border-pink-700/80 rounded-xl transition-all shadow-xs shrink-0 cursor-pointer flex items-center gap-1.5 group"
+              title="Daily Missions & Claim Rewards"
+            >
+              <Gift className="w-3.5 h-3.5 text-pink-500 group-hover:scale-110 transition-transform" />
+              <span className="hidden sm:inline">Missions</span>
+              <span className="w-1.5 h-1.5 rounded-full bg-pink-500 animate-ping shrink-0 hidden md:inline-block" />
             </button>
           )}
 

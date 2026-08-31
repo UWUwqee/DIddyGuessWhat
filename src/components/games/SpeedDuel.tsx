@@ -19,13 +19,22 @@ import { useAuth } from '../../context/AuthContext';
 import { soundManager } from '../../utils/soundEffects';
 import { DUEL_PROMPTS } from '../../data/arcadeData';
 import { AvatarRenderer } from '../AvatarRenderer';
+import { AiGameConfig } from '../VsAiArena';
+import { VsBotWagerBanner, VsBotPayoutModal } from '../VsBotWagerManager';
 
-export const SpeedDuel: React.FC<{ onBackToHub: () => void }> = ({ onBackToHub }) => {
+export const SpeedDuel: React.FC<{ onBackToHub: () => void; aiConfig?: AiGameConfig | null }> = ({
+  onBackToHub,
+  aiConfig = null,
+}) => {
   const { user, updateStats } = useAuth();
 
   const [topic, setTopic] = useState<string>(DUEL_PROMPTS[0]);
   const [phase, setPhase] = useState<'ready' | 'dueling' | 'judging' | 'results'>('ready');
   const [timeLeft, setTimeLeft] = useState(30);
+
+  // Wager modal
+  const [showWagerModal, setShowWagerModal] = useState(false);
+  const [wagerWon, setWagerWon] = useState(false);
 
   // Player 1 (User) canvas
   const canvasUserRef = useRef<HTMLCanvasElement | null>(null);
@@ -186,10 +195,20 @@ export const SpeedDuel: React.FC<{ onBackToHub: () => void }> = ({ onBackToHub }
           },
           true
         );
+
+        if (aiConfig?.withBet) {
+          setWagerWon(true);
+          setShowWagerModal(true);
+        }
       } else {
         setWinner('rival');
         soundManager.playCloseGuess();
         updateStats({ totalScore: 80 }, false);
+
+        if (aiConfig?.withBet) {
+          setWagerWon(false);
+          setShowWagerModal(true);
+        }
       }
 
       setPhase('results');
@@ -202,6 +221,9 @@ export const SpeedDuel: React.FC<{ onBackToHub: () => void }> = ({ onBackToHub }
 
   return (
     <div className="w-full max-w-5xl mx-auto space-y-4 animate-fade-in font-sans">
+      {/* VS BOT Active Wager Bar */}
+      <VsBotWagerBanner aiConfig={aiConfig} gameTitle="1v1 Canvas Speed Duel" />
+
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3 bg-white dark:bg-slate-900 p-4 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm">
         <div className="flex items-center gap-3">
@@ -403,6 +425,19 @@ export const SpeedDuel: React.FC<{ onBackToHub: () => void }> = ({ onBackToHub }
           </div>
         )}
       </div>
+
+      {/* VS BOT Wager Payout / Rematch Modal */}
+      <VsBotPayoutModal
+        isOpen={showWagerModal}
+        won={wagerWon}
+        aiConfig={aiConfig}
+        gameTitle="1v1 Canvas Speed Duel"
+        onRematch={() => {
+          setShowWagerModal(false);
+          startDuel();
+        }}
+        onBackToHub={onBackToHub}
+      />
     </div>
   );
 };

@@ -81,6 +81,7 @@ interface ServerRoom {
   settings: RoomSettings;
   state: GameState;
   drawingHistory: CanvasAction[];
+  messages: ChatMessage[];
   timerInterval?: NodeJS.Timeout;
   currentTurnWord: string;
   currentWordPoints: number;
@@ -360,6 +361,7 @@ io.on('connection', (socket: Socket) => {
         settings,
       },
       drawingHistory: [],
+      messages: [],
       currentTurnWord: '',
       currentWordPoints: 100,
       wordSelected: false,
@@ -521,6 +523,7 @@ io.on('connection', (socket: Socket) => {
           settings: defaultSettings,
         },
         drawingHistory: [],
+        messages: [],
         currentTurnWord: '',
         currentWordPoints: 100,
         wordSelected: false,
@@ -655,39 +658,89 @@ io.on('connection', (socket: Socket) => {
     }
 
     // Determine requested game mode (server-first)
-    const rawGameMode = (room.settings && (room.settings as any).gameMode) || (room.state.settings && (room.state.settings as any).gameMode) || 'drawing';
-    const gameMode = typeof rawGameMode === 'string' ? rawGameMode.toLowerCase() : 'drawing';
-
-    if (gameMode === 'uno' || gameMode === 'uno_party') {
-      // Start UNO stub
-      startUnoGame(room);
-      await saveActivityToFirestore({ type: 'game_start_uno', roomId: room.id, by: caller.id }).catch(() => {});
-      await saveRoomToFirestore(room);
-      return;
-    }
+    const rawGameMode = (room.settings && (room.settings as any).gameMode) || (room.state.settings && (room.state.settings as any).gameMode) || 'multiplayer_draw';
+    const gameMode = typeof rawGameMode === 'string' ? rawGameMode.toLowerCase() : 'multiplayer_draw';
 
     const activePlayers = room.state.players.filter(p => p.isConnected);
-    if (activePlayers.length < 2) {
+    if (activePlayers.length < 1) {
       socket.emit('room:error', {
-        message: 'Need at least 2 players to start! Invite a friend with the Room Code or click "+ Add AI Bot" if you wish to add AI bots.',
+        message: 'Need at least 1 player to start!',
       });
       return;
     }
 
-    // Reset scores & rounds
-    room.state.currentRound = 1;
-    room.state.players.forEach(p => {
-      p.score = 0;
-      p.roundScore = 0;
-      p.hasGuessed = false;
-      p.streak = 0;
-    });
-    room.drawerIndex = 0;
+    const GAME_MODE_TITLES: Record<string, string> = {
+      uno_party: '🃏 UNO Party Showdown',
+      trivia_dash: '⚡ Trivia Dash 60s',
+      anagram_rush: '🔤 Anagram Rush',
+      bomb_chain: '💥 Word Bomb Chain',
+      ai_sketch_guess: '🤖 AI Sketch Guesser',
+      speed_duel: '⚔️ 1v1 Speed Duel',
+      pixel_reveal: '🔍 Pixel Reveal Mystery',
+      blindfold_maestro: '🙈 Blindfold Maestro',
+      emoji_charades: '🎭 Emoji Charades',
+      sound_mystery: '🎵 Sound & Audio Mystery',
+      reflex_neon: '⚡ Neon Reflex Blitz',
+      color_clash: '🎨 Color Clash Matrix',
+      cyber_typing: '⌨️ Cyber Typing Rush',
+      simon_sequence: '🎶 Simon Sequence Matrix',
+      math_sprint: '🔢 Math Sprint 60s',
+      emoji_match: '🧩 Emoji Tile Match',
+      whack_doodle: '🔨 Whack-a-Doodle',
+      tower_stack: '🏗️ Cyber Tower Stacker',
+      ngip_mega_wheel: '🎡 Mega Jackpot Wheel',
+      ngip_vault_hacker: '🔐 Cyber Vault Hacker',
+      multiplayer_draw: '🎨 Multiplayer Drawing Arena',
+    };
 
-    await saveActivityToFirestore({ type: 'game_start_drawing', roomId: room.id, by: caller.id }).catch(() => {});
-    startTurnCycle(room);
-    broadcastPublicRoomsList();
-    await saveRoomToFirestore(room);
+    if (gameMode === 'multiplayer_draw' || gameMode === 'drawing') {
+      if (activePlayers.length < 2) {
+        socket.emit('room:error', {
+          message: 'Need at least 2 players to start Drawing Arena! Invite a friend with the Room Code or click "+ Add AI Bot".',
+        });
+        return;
+      }
+
+      // Reset scores & rounds
+      room.state.currentRound = 1;
+      room.state.players.forEach(p => {
+        p.score = 0;
+        p.roundScore = 0;
+        p.hasGuessed = false;
+        p.streak = 0;
+      });
+      room.drawerIndex = 0;
+
+      await saveActivityToFirestore({ type: 'game_start_drawing', roomId: room.id, by: caller.id }).catch(() => {});
+      startTurnCycle(room);
+      broadcastPublicRoomsList();
+      await saveRoomToFirestore(room);
+    } else {
+      // Non-drawing multiplayer arcade game (UNO Party, Trivia Dash, Word Bomb, etc.)
+      if (room.timerInterval) clearInterval(room.timerInterval);
+
+      // Transition room status to active playing
+      room.state.status = 'drawing';
+      room.drawingHistory = [];
+      room.currentTurnWord = '';
+      room.currentWordPoints = 0;
+      room.wordSelected = false;
+
+      const title = GAME_MODE_TITLES[gameMode] || gameMode;
+
+      io.to(room.id).emit('room:state', sanitizeStateForClient(room));
+      io.to(room.id).emit('chat:message', {
+        id: 'start_' + Date.now(),
+        senderName: 'Game Master',
+        text: `🎮 ${title} match has started! Good luck to all players!`,
+        type: 'system',
+        timestamp: Date.now(),
+      });
+
+      await saveActivityToFirestore({ type: `game_start_${gameMode}`, roomId: room.id, by: caller.id }).catch(() => {});
+      await saveRoomToFirestore(room);
+      broadcastPublicRoomsList();
+    }
   });
 
   // 5. Word Selection by Drawer
@@ -847,11 +900,60 @@ io.on('connection', (socket: Socket) => {
       text: cleanInput,
       type: 'chat',
       timestamp: Date.now(),
+      reactions: {},
     };
+    if (!room.messages) room.messages = [];
+    room.messages.push(chatMsg);
+    // Keep max 100 recent messages per room
+    if (room.messages.length > 100) room.messages.shift();
+
     io.to(room.id).emit('chat:message', chatMsg);
   });
 
-  // 9. Quick Emoji Reaction
+  // 9. Message Tapback Reaction (iMessage Style Double Tap)
+  socket.on('chat:react_message', ({ messageId, emoji }: { messageId: string; emoji: string }) => {
+    if (!currentRoomId || !messageId || !emoji) return;
+    const room = ROOMS.get(currentRoomId);
+    if (!room) return;
+    const sender = room.state.players.find(p => p.id === currentPlayerId);
+    if (!sender) return;
+
+    if (!room.messages) room.messages = [];
+    const targetMsg = room.messages.find(m => m.id === messageId);
+    if (!targetMsg) return;
+
+    if (!targetMsg.reactions) targetMsg.reactions = {};
+
+    const userList = targetMsg.reactions[emoji] || [];
+    const existingIndex = userList.indexOf(sender.id);
+
+    if (existingIndex >= 0) {
+      // Toggle off if already reacted
+      userList.splice(existingIndex, 1);
+      if (userList.length === 0) {
+        delete targetMsg.reactions[emoji];
+      } else {
+        targetMsg.reactions[emoji] = userList;
+      }
+    } else {
+      // Add reaction
+      userList.push(sender.id);
+      targetMsg.reactions[emoji] = userList;
+    }
+
+    // Broadcast updated reactions for this message to ALL players in the room
+    io.to(room.id).emit('chat:message_reaction_update', {
+      messageId,
+      reactions: targetMsg.reactions,
+      reactedBy: {
+        userId: sender.id,
+        username: sender.username,
+        emoji,
+      },
+    });
+  });
+
+  // 9b. Quick Emoji Reaction (Floating arena reactions)
   socket.on('reaction:send', ({ emoji }: { emoji: string }) => {
     if (!currentRoomId) return;
     const room = ROOMS.get(currentRoomId);

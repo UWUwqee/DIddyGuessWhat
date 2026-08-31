@@ -14,6 +14,7 @@ import { GameOverModal } from './components/GameOverModal';
 import { GlobalLeaderboard } from './components/GlobalLeaderboard';
 import { ProfileModal } from './components/ProfileModal';
 import { AuthModal } from './components/AuthModal';
+import { DailyMissionsModal } from './components/DailyMissionsModal';
 import { WelcomeAuthGate } from './components/WelcomeAuthGate';
 import { AdminPanel } from './components/AdminPanel';
 import { ArcadeHub } from './components/ArcadeHub';
@@ -50,6 +51,7 @@ const MainGameContainer: React.FC<{
   onOpenAuth: () => void;
   onOpenAuthGate: () => void;
   onOpenAdmin: () => void;
+  onOpenDailyMissions: () => void;
 }> = ({
   currentMode,
   setCurrentMode,
@@ -58,6 +60,7 @@ const MainGameContainer: React.FC<{
   onOpenAuth,
   onOpenAuthGate,
   onOpenAdmin,
+  onOpenDailyMissions,
 }) => {
   const { gameState, leaveRoom } = useGame();
   const [mobileTab, setMobileTab] = useState<'game' | 'chat' | 'scores'>('game');
@@ -71,6 +74,59 @@ const MainGameContainer: React.FC<{
   const handleBackToLobby = () => {
     setActiveAiConfig(null);
     setCurrentMode('multiplayer_draw');
+  };
+
+  const activeRoomGameMode: ArcadeGameMode = gameState?.settings?.gameMode || 'multiplayer_draw';
+  const isRoomInLobby = gameState?.status === 'lobby';
+
+  const renderMultiplayerGameComponent = (mode: ArcadeGameMode) => {
+    switch (mode) {
+      case 'uno_party':
+        return <UnoParty onBackToHub={leaveRoom} />;
+      case 'trivia_dash':
+        return <TriviaDash onBackToHub={leaveRoom} />;
+      case 'anagram_rush':
+        return <AnagramRush onBackToHub={leaveRoom} />;
+      case 'bomb_chain':
+        return <WordBomb onBackToHub={leaveRoom} />;
+      case 'pixel_reveal':
+        return <PixelReveal onBackToHub={leaveRoom} />;
+      case 'blindfold_maestro':
+        return <BlindfoldMaestro onBackToHub={leaveRoom} />;
+      case 'ai_sketch_guess':
+        return <AiSketchGuesser onBackToHub={leaveRoom} />;
+      case 'emoji_charades':
+        return <EmojiCharades onBackToHub={leaveRoom} />;
+      case 'speed_duel':
+        return <SpeedDuel onBackToHub={leaveRoom} />;
+      case 'memory_rush':
+        return <MemoryRush onBackToHub={leaveRoom} />;
+      case 'sound_mystery':
+        return <SoundMystery onBackToLobby={leaveRoom} />;
+      case 'reflex_neon':
+        return <ReflexNeon onBackToLobby={leaveRoom} />;
+      case 'color_clash':
+        return <ColorClash onBackToHub={leaveRoom} />;
+      case 'cyber_typing':
+        return <CyberTyping onBackToHub={leaveRoom} />;
+      case 'simon_sequence':
+        return <SimonSequence onBackToHub={leaveRoom} />;
+      case 'math_sprint':
+        return <MathSprint onBackToHub={leaveRoom} />;
+      case 'emoji_match':
+        return <EmojiMatch onBackToHub={leaveRoom} />;
+      case 'whack_doodle':
+        return <WhackDoodle onBackToHub={leaveRoom} />;
+      case 'tower_stack':
+        return <TowerStack onBackToHub={leaveRoom} />;
+      case 'ngip_mega_wheel':
+        return <NgipMegaWheel onBackToHub={leaveRoom} />;
+      case 'ngip_vault_hacker':
+        return <NgipVaultHacker onBackToHub={leaveRoom} />;
+      case 'multiplayer_draw':
+      default:
+        return null;
+    }
   };
 
   return (
@@ -87,12 +143,13 @@ const MainGameContainer: React.FC<{
         onOpenAuth={onOpenAuth}
         onOpenAuthGate={onOpenAuthGate}
         onOpenAdmin={onOpenAdmin}
+        onOpenDailyMissions={onOpenDailyMissions}
       />
 
       {/* Main Game Screen depending on selected mode */}
       <main className="flex-1 flex flex-col p-2 sm:p-4 max-w-7xl w-full mx-auto relative z-10">
         <AnimatePresence mode="wait">
-          {/* 1. ACTIVE MULTIPLAYER GAME ROOM (Waiting Lobby & Match) */}
+          {/* 1. ACTIVE MULTIPLAYER GAME ROOM */}
           {Boolean(gameState) ? (
             <motion.div
               key="multiplayer_room_arena"
@@ -102,87 +159,122 @@ const MainGameContainer: React.FC<{
               transition={{ duration: 0.2 }}
               className="flex-1 flex flex-col"
             >
-              <div className="flex-1 flex flex-col space-y-3">
-                {/* Mobile Quick Room Bar with Back button */}
-                <div className="flex sm:hidden items-center justify-between px-3 py-2 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
-                  <button
-                    type="button"
-                    onClick={leaveRoom}
-                    className="px-2.5 py-1 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-100 text-xs font-bold flex items-center gap-1.5 border border-slate-200 dark:border-slate-700 cursor-pointer active:scale-95"
-                  >
-                    <ArrowLeft className="w-3.5 h-3.5" />
-                    <span>Back to Lobby</span>
-                  </button>
-                  <div className="flex items-center gap-1.5 text-xs font-mono font-bold text-indigo-600 dark:text-indigo-400">
-                    <span>#{gameState.roomCode}</span>
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+              {isRoomInLobby || activeRoomGameMode === 'multiplayer_draw' ? (
+                /* Room Waiting Lobby OR Drawing Arena Match */
+                <div className="flex-1 flex flex-col space-y-3">
+                  {/* Mobile Quick Room Bar with Back button */}
+                  <div className="flex sm:hidden items-center justify-between px-3 py-2 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
+                    <button
+                      type="button"
+                      onClick={leaveRoom}
+                      className="px-2.5 py-1 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-100 text-xs font-bold flex items-center gap-1.5 border border-slate-200 dark:border-slate-700 cursor-pointer active:scale-95"
+                    >
+                      <ArrowLeft className="w-3.5 h-3.5" />
+                      <span>Back to Lobby</span>
+                    </button>
+                    <div className="flex items-center gap-1.5 text-xs font-mono font-bold text-indigo-600 dark:text-indigo-400">
+                      <span>#{gameState.roomCode || (gameState.roomId.includes('_') ? gameState.roomId.split('_')[1].toUpperCase() : gameState.roomId)}</span>
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                    </div>
+                  </div>
+
+                  {/* Mobile Tab Switcher */}
+                  <div className="flex lg:hidden items-center bg-white dark:bg-slate-900 p-1 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
+                    <button
+                      onClick={() => setMobileTab('scores')}
+                      className={`flex-1 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                        mobileTab === 'scores'
+                          ? 'bg-indigo-600 text-white shadow-xs'
+                          : 'text-slate-600 dark:text-slate-400'
+                      }`}
+                    >
+                      👥 Players ({gameState.players.length})
+                    </button>
+                    <button
+                      onClick={() => setMobileTab('game')}
+                      className={`flex-1 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                        mobileTab === 'game'
+                          ? 'bg-indigo-600 text-white shadow-xs'
+                          : 'text-slate-600 dark:text-slate-400'
+                      }`}
+                    >
+                      🎨 Arena
+                    </button>
+                    <button
+                      onClick={() => setMobileTab('chat')}
+                      className={`flex-1 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                        mobileTab === 'chat'
+                          ? 'bg-indigo-600 text-white shadow-xs'
+                          : 'text-slate-600 dark:text-slate-400'
+                      }`}
+                    >
+                      💬 Chat & Guesses
+                    </button>
+                  </div>
+
+                  {/* Desktop 3-Column Arena */}
+                  <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-3 min-h-[580px]">
+                    {/* Left Column: Scoreboard */}
+                    <div
+                      className={`lg:col-span-3 h-[520px] lg:h-auto ${
+                        mobileTab === 'scores' ? 'block' : 'hidden lg:block'
+                      }`}
+                    >
+                      <Scoreboard />
+                    </div>
+
+                    {/* Middle Column: Canvas / Arena */}
+                    <div
+                      className={`lg:col-span-6 h-[580px] lg:h-auto ${
+                        mobileTab === 'game' ? 'block' : 'hidden lg:block'
+                      }`}
+                    >
+                      <Canvas />
+                    </div>
+
+                    {/* Right Column: Chat & Guesses */}
+                    <div
+                      className={`lg:col-span-3 h-[520px] lg:h-auto ${
+                        mobileTab === 'chat' ? 'block' : 'hidden lg:block'
+                      }`}
+                    >
+                      <ChatBox />
+                    </div>
                   </div>
                 </div>
+              ) : (
+                /* Non-Drawing Arcade Game Match (UNO Party, Trivia Dash, Anagram Rush, etc.) */
+                <div className="flex-1 flex flex-col space-y-3">
+                  {/* Top Room Banner */}
+                  <div className="flex items-center justify-between px-3.5 py-2.5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={leaveRoom}
+                        className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-100 text-xs font-bold flex items-center gap-1.5 border border-slate-200 dark:border-slate-700 cursor-pointer active:scale-95 transition-all"
+                      >
+                        <ArrowLeft className="w-3.5 h-3.5" />
+                        <span>Leave Room</span>
+                      </button>
+                      <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 text-xs font-mono font-bold border border-indigo-200 dark:border-indigo-800">
+                        <span>Room Code: #{gameState.roomCode || (gameState.roomId.includes('_') ? gameState.roomId.split('_')[1].toUpperCase() : gameState.roomId)}</span>
+                      </div>
+                    </div>
 
-                {/* Mobile Tab Switcher */}
-                <div className="flex lg:hidden items-center bg-white dark:bg-slate-900 p-1 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
-                  <button
-                    onClick={() => setMobileTab('scores')}
-                    className={`flex-1 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                      mobileTab === 'scores'
-                        ? 'bg-indigo-600 text-white shadow-xs'
-                        : 'text-slate-600 dark:text-slate-400'
-                    }`}
-                  >
-                    👥 Players ({gameState.players.length})
-                  </button>
-                  <button
-                    onClick={() => setMobileTab('game')}
-                    className={`flex-1 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                      mobileTab === 'game'
-                        ? 'bg-indigo-600 text-white shadow-xs'
-                        : 'text-slate-600 dark:text-slate-400'
-                    }`}
-                  >
-                    🎨 Arena
-                  </button>
-                  <button
-                    onClick={() => setMobileTab('chat')}
-                    className={`flex-1 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                      mobileTab === 'chat'
-                        ? 'bg-indigo-600 text-white shadow-xs'
-                        : 'text-slate-600 dark:text-slate-400'
-                    }`}
-                  >
-                    💬 Chat & Guesses
-                  </button>
-                </div>
-
-                {/* Desktop 3-Column Arena */}
-                <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-3 min-h-[580px]">
-                  {/* Left Column: Scoreboard */}
-                  <div
-                    className={`lg:col-span-3 h-[520px] lg:h-auto ${
-                      mobileTab === 'scores' ? 'block' : 'hidden lg:block'
-                    }`}
-                  >
-                    <Scoreboard />
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-purple-50 dark:bg-purple-950 text-purple-700 dark:text-purple-300 text-xs font-bold border border-purple-200 dark:border-purple-800">
+                        <Users className="w-3.5 h-3.5" />
+                        <span>{gameState.players.filter(p => p.isConnected).length} Players</span>
+                      </div>
+                    </div>
                   </div>
 
-                  {/* Middle Column: Canvas / Arena */}
-                  <div
-                    className={`lg:col-span-6 h-[580px] lg:h-auto ${
-                      mobileTab === 'game' ? 'block' : 'hidden lg:block'
-                    }`}
-                  >
-                    <Canvas />
-                  </div>
-
-                  {/* Right Column: Chat & Guesses */}
-                  <div
-                    className={`lg:col-span-3 h-[520px] lg:h-auto ${
-                      mobileTab === 'chat' ? 'block' : 'hidden lg:block'
-                    }`}
-                  >
-                    <ChatBox />
+                  {/* Active Game Mode Component */}
+                  <div className="flex-1">
+                    {renderMultiplayerGameComponent(activeRoomGameMode)}
                   </div>
                 </div>
-              </div>
+              )}
             </motion.div>
           ) : currentMode === 'multiplayer_draw' ? (
             /* 2. MULTIPLAYER LOBBY / ROOM BROWSER / CUSTOM ROOM CREATOR */
@@ -212,7 +304,7 @@ const MainGameContainer: React.FC<{
               exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.2 }}
             >
-              <UnoParty onBackToHub={handleBackToLobby} />
+              <UnoParty onBackToHub={handleBackToLobby} aiConfig={activeAiConfig} />
             </motion.div>
           )}
 
@@ -224,7 +316,7 @@ const MainGameContainer: React.FC<{
               exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.2 }}
             >
-              <TriviaDash onBackToHub={handleBackToLobby} />
+              <TriviaDash onBackToHub={handleBackToLobby} aiConfig={activeAiConfig} />
             </motion.div>
           )}
 
@@ -237,7 +329,7 @@ const MainGameContainer: React.FC<{
               exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.2 }}
             >
-              <AnagramRush onBackToHub={handleBackToLobby} />
+              <AnagramRush onBackToHub={handleBackToLobby} aiConfig={activeAiConfig} />
             </motion.div>
           )}
 
@@ -250,7 +342,7 @@ const MainGameContainer: React.FC<{
               exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.2 }}
             >
-              <WordBomb onBackToHub={handleBackToLobby} />
+              <WordBomb onBackToHub={handleBackToLobby} aiConfig={activeAiConfig} />
             </motion.div>
           )}
 
@@ -263,7 +355,7 @@ const MainGameContainer: React.FC<{
               exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.2 }}
             >
-              <PixelReveal onBackToHub={handleBackToLobby} />
+              <PixelReveal onBackToHub={handleBackToLobby} aiConfig={activeAiConfig} />
             </motion.div>
           )}
 
@@ -289,7 +381,7 @@ const MainGameContainer: React.FC<{
               exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.2 }}
             >
-              <AiSketchGuesser onBackToHub={handleBackToLobby} />
+              <AiSketchGuesser onBackToHub={handleBackToLobby} aiConfig={activeAiConfig} />
             </motion.div>
           )}
 
@@ -302,7 +394,7 @@ const MainGameContainer: React.FC<{
               exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.2 }}
             >
-              <EmojiCharades onBackToHub={handleBackToLobby} />
+              <EmojiCharades onBackToHub={handleBackToLobby} aiConfig={activeAiConfig} />
             </motion.div>
           )}
 
@@ -315,7 +407,7 @@ const MainGameContainer: React.FC<{
               exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.2 }}
             >
-              <SpeedDuel onBackToHub={handleBackToLobby} />
+              <SpeedDuel onBackToHub={handleBackToLobby} aiConfig={activeAiConfig} />
             </motion.div>
           )}
 
@@ -477,10 +569,14 @@ const MainGameContainer: React.FC<{
         </AnimatePresence>
       </main>
 
-      {/* Multiplayer State Overlays */}
-      <WordSelector />
-      <RoundOverlay />
-      <GameOverModal />
+      {/* Multiplayer State Overlays (Drawing Game only) */}
+      {gameState && (gameState.settings?.gameMode === 'multiplayer_draw' || !gameState.settings?.gameMode) && (
+        <>
+          <WordSelector />
+          <RoundOverlay />
+          <GameOverModal />
+        </>
+      )}
     </div>
   );
 };
@@ -492,6 +588,7 @@ export default function App() {
   const [showProfile, setShowProfile] = useState(false);
   const [showAuth, setShowAuth] = useState(false);
   const [showAdmin, setShowAdmin] = useState(false);
+  const [showDailyMissions, setShowDailyMissions] = useState(false);
 
   return (
     <AuthProvider>
@@ -524,12 +621,17 @@ export default function App() {
                 onOpenAuth={() => setShowAuth(true)}
                 onOpenAuthGate={() => setHasEnteredApp(false)}
                 onOpenAdmin={() => setShowAdmin(true)}
+                onOpenDailyMissions={() => setShowDailyMissions(true)}
               />
             </motion.div>
           )}
         </AnimatePresence>
 
         {/* Global Modals */}
+        <DailyMissionsModal
+          isOpen={showDailyMissions}
+          onClose={() => setShowDailyMissions(false)}
+        />
         <GlobalLeaderboard
           isOpen={showLeaderboard}
           onClose={() => setShowLeaderboard(false)}

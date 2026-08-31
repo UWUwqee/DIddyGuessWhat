@@ -74,6 +74,8 @@ export interface PlayerStats {
   reflexCombosHit?: number;
   totalBetsWon?: string;
   totalBetsPlaced?: string;
+  currentStreak?: number;
+  bestStreak?: number;
 }
 
 export interface Player {
@@ -162,6 +164,12 @@ export type MessageType =
   | 'word_reveal'
   | 'bet_won';
 
+export interface MessageReaction {
+  emoji: string;
+  count: number;
+  users: { userId: string; username: string }[];
+}
+
 export interface ChatMessage {
   id: string;
   senderId?: string;
@@ -174,6 +182,26 @@ export interface ChatMessage {
   timestamp: number;
   pointsAwarded?: number;
   rewardText?: string;
+  reactions?: Record<string, string[]>; // emoji -> array of userIds
+}
+
+export interface DailyMission {
+  id: string;
+  title: string;
+  description: string;
+  icon: string;
+  category: 'play' | 'win' | 'chat' | 'arcade' | 'social';
+  target: number;
+  progress: number;
+  completed: boolean;
+  claimed: boolean;
+  reward: {
+    diamonds?: string;
+    amethysts?: string;
+    jades?: string;
+    rubies?: string;
+    xp: number;
+  };
 }
 
 export interface GameState {

@@ -84,8 +84,11 @@ export const AuthModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ 
               <h3 className="text-lg font-black text-slate-900 dark:text-white">
                 Account & Authentication
               </h3>
-              <p className="text-xs text-slate-500">
-                Sign in, create an account, or continue with Google
+              <p className="text-xs font-bold tracking-wide">
+                <span className="text-slate-500">By </span>
+                <span className="bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 bg-clip-text text-transparent drop-shadow-[0_1px_2px_rgba(245,158,11,0.5)] font-black">
+                  D14Dąmon
+                </span>
               </p>
             </div>
           </div>

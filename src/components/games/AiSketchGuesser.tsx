@@ -20,6 +20,8 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { soundManager } from '../../utils/soundEffects';
 import { AI_SKETCH_PROMPTS, AiChallengePrompt } from '../../data/arcadeData';
+import { AiGameConfig } from '../VsAiArena';
+import { VsBotWagerBanner, VsBotPayoutModal } from '../VsBotWagerManager';
 
 const BRUSH_COLORS = [
   '#000000',
@@ -33,7 +35,10 @@ const BRUSH_COLORS = [
   '#64748B',
 ];
 
-export const AiSketchGuesser: React.FC<{ onBackToHub: () => void }> = ({ onBackToHub }) => {
+export const AiSketchGuesser: React.FC<{ onBackToHub: () => void; aiConfig?: AiGameConfig | null }> = ({
+  onBackToHub,
+  aiConfig = null,
+}) => {
   const { user, updateStats } = useAuth();
 
   const [currentPrompt, setCurrentPrompt] = useState<AiChallengePrompt>(AI_SKETCH_PROMPTS[0]);
@@ -45,6 +50,10 @@ export const AiSketchGuesser: React.FC<{ onBackToHub: () => void }> = ({ onBackT
   const [aiSpeech, setAiSpeech] = useState<string>('Ready whenever you are! Click "Start Challenge"!');
   const [aiConfidence, setAiConfidence] = useState<number>(0);
   const [aiMood, setAiMood] = useState<'idle' | 'thinking' | 'confused' | 'excited' | 'celebrating'>('idle');
+
+  // Wager Modal state
+  const [showWagerModal, setShowWagerModal] = useState(false);
+  const [wagerWon, setWagerWon] = useState(false);
 
   // Drawing canvas state
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -186,12 +195,18 @@ export const AiSketchGuesser: React.FC<{ onBackToHub: () => void }> = ({ onBackT
           },
           false
         );
+
+        // If in wager bet mode, trigger wager victory payout
+        if (aiConfig?.withBet) {
+          setWagerWon(true);
+          setShowWagerModal(true);
+        }
       }
     };
 
     const timer = setTimeout(evaluateGuess, 400);
     return () => clearTimeout(timer);
-  }, [strokeCount, gameState, currentPrompt, timeLeft, streak, updateStats, user?.stats?.aiDrawsBeaten]);
+  }, [strokeCount, gameState, currentPrompt, timeLeft, streak, updateStats, user?.stats?.aiDrawsBeaten, aiConfig]);
 
   // Countdown timer loop
   useEffect(() => {
@@ -206,6 +221,12 @@ export const AiSketchGuesser: React.FC<{ onBackToHub: () => void }> = ({ onBackT
           setAiSpeech(`Oh no, time's up! The word was "${currentPrompt.word}". Good try!`);
           setStreak(0);
           soundManager.playCloseGuess();
+
+          // If in wager mode, show defeat modal
+          if (aiConfig?.withBet) {
+            setWagerWon(false);
+            setShowWagerModal(true);
+          }
           return 0;
         }
         if (prev <= 6) {
@@ -216,7 +237,7 @@ export const AiSketchGuesser: React.FC<{ onBackToHub: () => void }> = ({ onBackT
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [gameState, currentPrompt]);
+  }, [gameState, currentPrompt, aiConfig]);
 
   // Initialize canvas on mount
   useEffect(() => {
@@ -225,6 +246,9 @@ export const AiSketchGuesser: React.FC<{ onBackToHub: () => void }> = ({ onBackT
 
   return (
     <div className="w-full max-w-5xl mx-auto space-y-4 animate-fade-in font-sans">
+      {/* VS BOT Active Wager Bar */}
+      <VsBotWagerBanner aiConfig={aiConfig} gameTitle="AI Sketch Guesser" />
+
       {/* Top Bar with Mode Title & Stats */}
       <div className="flex flex-wrap items-center justify-between gap-3 bg-white dark:bg-slate-900 p-4 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm">
         <div className="flex items-center gap-3">
@@ -499,6 +523,19 @@ export const AiSketchGuesser: React.FC<{ onBackToHub: () => void }> = ({ onBackT
           </div>
         </div>
       </div>
+
+      {/* VS BOT Payout / Rematch Modal */}
+      <VsBotPayoutModal
+        isOpen={showWagerModal}
+        won={wagerWon}
+        aiConfig={aiConfig}
+        gameTitle="AI Sketch Guesser"
+        onRematch={() => {
+          setShowWagerModal(false);
+          handleStartChallenge();
+        }}
+        onBackToHub={onBackToHub}
+      />
     </div>
   );
 };

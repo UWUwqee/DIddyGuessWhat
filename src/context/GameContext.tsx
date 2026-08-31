@@ -45,6 +45,7 @@ interface GameContextType {
   clearCanvas: () => void;
   sendMessage: (text: string) => void;
   sendReaction: (emoji: string) => void;
+  reactToMessage: (messageId: string, emoji: string) => void;
   leaveRoom: () => void;
   fetchPublicRooms: () => void;
 }
@@ -221,12 +222,25 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       fetchPublicRooms();
     };
 
+    const handleMessageReactionUpdate = ({
+      messageId,
+      reactions,
+    }: {
+      messageId: string;
+      reactions: Record<string, string[]>;
+    }) => {
+      setMessages(prev =>
+        prev.map(msg => (msg.id === messageId ? { ...msg, reactions } : msg))
+      );
+    };
+
     socket.on('room:state', handleRoomState);
     socket.on('room:joined', handleRoomJoined);
     socket.on('draw:action', handleDrawAction);
     socket.on('canvas:clear', handleCanvasClear);
     socket.on('canvas:history', handleCanvasHistory);
     socket.on('chat:message', handleChatMessage);
+    socket.on('chat:message_reaction_update', handleMessageReactionUpdate);
     socket.on('reaction:broadcast', handleReactionBroadcast);
     socket.on('leaderboard:update', handleLeaderboardUpdate);
     socket.on('rooms:list', handleRoomsList);
@@ -253,6 +267,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       socket.off('canvas:clear', handleCanvasClear);
       socket.off('canvas:history', handleCanvasHistory);
       socket.off('chat:message', handleChatMessage);
+      socket.off('chat:message_reaction_update', handleMessageReactionUpdate);
       socket.off('reaction:broadcast', handleReactionBroadcast);
       socket.off('leaderboard:update', handleLeaderboardUpdate);
       socket.off('rooms:list', handleRoomsList);
@@ -406,7 +421,14 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     socket.emit('reaction:send', { emoji });
   };
 
+  const reactToMessage = (messageId: string, emoji: string) => {
+    const socket = getSocket();
+    socket.emit('chat:react_message', { messageId, emoji });
+  };
+
   const leaveRoom = () => {
+    const socket = getSocket();
+    socket.emit('room:leave');
     setGameState(null);
     setDrawingHistory([]);
     setMessages([]);
@@ -439,6 +461,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         clearCanvas,
         sendMessage,
         sendReaction,
+        reactToMessage,
         leaveRoom,
         fetchPublicRooms,
       }}

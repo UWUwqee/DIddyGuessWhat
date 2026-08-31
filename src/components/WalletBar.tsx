@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Sparkles, Plus, Gift, ShieldAlert, ArrowUpRight, Check, Coins } from 'lucide-react';
+import { Sparkles, Plus, Gift, ShieldAlert, ArrowUpRight, Check, Coins, Target } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import {
   CURRENCY_CONFIG,
@@ -9,6 +9,7 @@ import {
 } from '../utils/currencyUtils';
 import { CurrencyType } from '../types';
 import { soundManager } from '../utils/soundEffects';
+import { DailyMissionsModal } from './DailyMissionsModal';
 
 interface WalletBarProps {
   onOpenAdmin?: () => void;
@@ -17,6 +18,7 @@ interface WalletBarProps {
 export const WalletBar: React.FC<WalletBarProps> = ({ onOpenAdmin }) => {
   const { user, updateWallet, isAdmin } = useAuth();
   const [showQuickAddModal, setShowQuickAddModal] = useState(false);
+  const [showMissionsModal, setShowMissionsModal] = useState(false);
   const [selectedCurrency, setSelectedCurrency] = useState<CurrencyType>('diamond');
   const [hasClaimedDaily, setHasClaimedDaily] = useState(false);
   const [dailyClaimMsg, setDailyClaimMsg] = useState<string | null>(null);
@@ -67,6 +69,17 @@ export const WalletBar: React.FC<WalletBarProps> = ({ onOpenAdmin }) => {
             </div>
           );
         })}
+
+        {/* Daily Missions Button */}
+        <button
+          type="button"
+          onClick={() => setShowMissionsModal(true)}
+          title="Daily Missions & Quests"
+          className="flex items-center gap-1 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-xl text-[10px] sm:text-xs font-black transition-all cursor-pointer shrink-0 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white shadow-xs hover:scale-105 active:scale-95"
+        >
+          <Target className="w-3 h-3 text-amber-300" />
+          <span className="hidden md:inline">Missions</span>
+        </button>
 
         {/* Daily Fortune / Quick Top-up Button */}
         <button
@@ -209,6 +222,12 @@ export const WalletBar: React.FC<WalletBarProps> = ({ onOpenAdmin }) => {
           </div>
         </div>
       )}
+
+      {/* Daily Missions Modal */}
+      <DailyMissionsModal
+        isOpen={showMissionsModal}
+        onClose={() => setShowMissionsModal(false)}
+      />
     </>
   );
 };

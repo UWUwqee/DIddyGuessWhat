@@ -233,9 +233,9 @@ export const Scoreboard: React.FC = () => {
               <button
                 type="button"
                 onClick={handleStartGameClick}
-                disabled={activeConnectedCount < 2}
+                disabled={activeConnectedCount < 1}
                 className={`w-full py-2.5 px-4 rounded-xl text-xs font-bold text-white flex items-center justify-center gap-2 transition-all ${
-                  activeConnectedCount >= 2
+                  activeConnectedCount >= 1
                     ? 'bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 shadow-md shadow-indigo-600/25 active:scale-95 cursor-pointer'
                     : 'bg-slate-300 dark:bg-slate-700 text-slate-500 dark:text-slate-400 cursor-not-allowed'
                 }`}
@@ -243,8 +243,8 @@ export const Scoreboard: React.FC = () => {
                 <Play className="w-4 h-4 fill-current" />
                 <span>
                   {activeConnectedCount >= 2
-                    ? 'Start Game'
-                    : 'Waiting for Players (Min 2)'}
+                    ? `Start ${gameState.settings?.gameMode ? gameState.settings.gameMode.replace(/_/g, ' ').toUpperCase() : 'GAME'}`
+                    : `Start Game (${activeConnectedCount} Player)`}
                 </span>
               </button>
 

@@ -25,9 +25,12 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { soundManager } from '../../utils/soundEffects';
 import { AvatarRenderer } from '../AvatarRenderer';
+import { AiGameConfig } from '../VsAiArena';
+import { VsBotWagerBanner, VsBotPayoutModal } from '../VsBotWagerManager';
 
 interface UnoPartyProps {
   onBackToHub: () => void;
+  aiConfig?: AiGameConfig | null;
 }
 
 export type UnoColor = 'red' | 'blue' | 'green' | 'yellow' | 'wild';
@@ -175,7 +178,7 @@ const createDeck = (): UnoCard[] => {
   return deck;
 };
 
-export const UnoParty: React.FC<UnoPartyProps> = ({ onBackToHub }) => {
+export const UnoParty: React.FC<UnoPartyProps> = ({ onBackToHub, aiConfig = null }) => {
   const { user, updateStats } = useAuth();
 
   // Match state
@@ -196,6 +199,10 @@ export const UnoParty: React.FC<UnoPartyProps> = ({ onBackToHub }) => {
   const [lastDrawnCard, setLastDrawnCard] = useState<UnoCard | null>(null);
   const [winner, setWinner] = useState<UnoPlayer | null>(null);
   const [finalScore, setFinalScore] = useState<number>(0);
+
+  // Wager modal
+  const [showWagerModal, setShowWagerModal] = useState(false);
+  const [wagerWon, setWagerWon] = useState(false);
 
   const botTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -578,6 +585,11 @@ export const UnoParty: React.FC<UnoPartyProps> = ({ onBackToHub }) => {
         },
         true
       );
+
+      if (aiConfig?.withBet) {
+        setWagerWon(true);
+        setShowWagerModal(true);
+      }
     } else {
       updateStats(
         {
@@ -587,6 +599,11 @@ export const UnoParty: React.FC<UnoPartyProps> = ({ onBackToHub }) => {
         },
         false
       );
+
+      if (aiConfig?.withBet) {
+        setWagerWon(false);
+        setShowWagerModal(true);
+      }
     }
   };
 
@@ -664,6 +681,9 @@ export const UnoParty: React.FC<UnoPartyProps> = ({ onBackToHub }) => {
 
   return (
     <div className="w-full max-w-5xl mx-auto space-y-4 animate-fade-in font-sans select-none">
+      {/* VS BOT Active Wager Bar */}
+      <VsBotWagerBanner aiConfig={aiConfig} gameTitle="UNO Party Showdown" />
+
       {/* Header */}
       <div className="flex items-center justify-between gap-3 bg-white dark:bg-slate-900 p-4 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm">
         <button
@@ -1107,6 +1127,19 @@ export const UnoParty: React.FC<UnoPartyProps> = ({ onBackToHub }) => {
           </div>
         </motion.div>
       )}
+
+      {/* VS BOT Wager Payout / Rematch Modal */}
+      <VsBotPayoutModal
+        isOpen={showWagerModal}
+        won={wagerWon}
+        aiConfig={aiConfig}
+        gameTitle="UNO Party Showdown"
+        onRematch={() => {
+          setShowWagerModal(false);
+          handleStartGame(playerCount);
+        }}
+        onBackToHub={onBackToHub}
+      />
     </div>
   );
 };
